@@ -39,6 +39,7 @@ For Cline/RooCode Extension:
     }
   }
 }
+```
 
 For Claude Desktop:
 ```json
