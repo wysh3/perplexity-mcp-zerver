@@ -2,6 +2,8 @@
 
 A research level Model Context Protocol (MCP) server implementation providing AI-powered research capabilities through Perplexity's infrastructure without using any API key.
 
+<a href="https://glama.ai/mcp/servers/jmwpwn6uqh"><img width="380" height="200" src="https://glama.ai/mcp/servers/jmwpwn6uqh/badge" alt="advance perplexity mcp server" /></a>
+
 ## Table of Contents
 - [Features](#features)
 - [Available Tools](#available-tools)
