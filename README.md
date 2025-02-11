@@ -11,7 +11,7 @@ A Model Context Protocol server that provides web search capabilities using Perp
 1. Clone or download this repository:
 ```bash
 git clone https://github.com/wysh3/perplexity-mcp-server.git
-cd perplexity-server
+cd perplexity-mcp-server
 ```
 
 2. Install dependencies:
