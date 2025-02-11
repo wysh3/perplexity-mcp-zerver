@@ -1,6 +1,6 @@
-# Perplexity MCP Server ![npm](https://img.shields.io/npm/v/perplexity-mcp-server)
+# Perplexity MCP Server
 
-A research level Model Context Protocol (MCP) server implementation providing AI-powered research capabilities through Perplexity's infrastructure.
+A research level Model Context Protocol (MCP) server implementation providing AI-powered research capabilities through Perplexity's infrastructure without using any API key.
 
 ## Table of Contents
 - [Features](#features)
