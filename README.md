@@ -1,4 +1,5 @@
 # Perplexity MCP Server
+[![smithery badge](https://smithery.ai/badge/@wysh3/perplexity-mcp-server)](https://smithery.ai/server/@wysh3/perplexity-mcp-server)
 
 A research level Model Context Protocol (MCP) server implementation providing AI-powered research capabilities through Perplexity's infrastructure without using any API key.
 
@@ -146,6 +147,15 @@ const analysis = await mcp.callTool('perplexity-server', 'check_deprecated_code'
 
 ## Installation
 
+### Installing via Smithery
+
+To install Perplexity Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@wysh3/perplexity-mcp-server):
+
+```bash
+npx -y @smithery/cli install @wysh3/perplexity-mcp-server --client claude
+```
+
+### Manual Installation
 1. Clone or download this repository:
 ```bash
 git clone https://github.com/wysh3/perplexity-mcp-server.git
