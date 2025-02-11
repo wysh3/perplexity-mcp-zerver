@@ -1,28 +1,53 @@
-# Perplexity MCP Server without API Key
+# Perplexity MCP Server
 
-A Model Context Protocol server that provides Perplexity.ai search capabilities.
+A Model Context Protocol server that provides web search capabilities using Perplexity.ai.
+
+## Features
+- Search the web using Perplexity
+- No API keys or authentication required
 
 ## Installation
+
+1. Clone or download this repository:
 ```bash
 git clone https://github.com/wysh3/perplexity-server.git
 cd perplexity-server
+```
+
+2. Install dependencies:
+```bash
 npm install
+```
+
+3. Build the server:
+```bash
 npm run build
 ```
 
 ## Configuration
-Add to your Cline/RooCode settings.json:
+
+Add the server to your MCP configuration:
+
+For Cline/RooCode Extension:
 ```json
 {
   "mcpServers": {
-    "perplexity-server": {
+    "web-search": {
       "command": "node",
-      "args": [
-        "/path/to/perplexity-server/build/index.js"
-      ],
-      "env": {},
-      "disabled": false,
-      "alwaysAllow": ["search"]
+      "args": ["/path/to/web-search/build/index.js"],
+      "env": {}
+    }
+  }
+}
+
+For Claude Desktop:
+```json
+{
+  "mcpServers": {
+    "web-search": {
+      "command": "node",
+      "args": ["/path/to/web-search/build/index.js"],
+      "env": {}
     }
   }
 }
