@@ -1,6 +1,6 @@
 # Perplexity MCP Server
 
-A Model Context Protocol server that provides web search capabilities using Perplexity.ai.
+A Model Context Protocol server that provides web search capabilities using Perplexity.ai without API keys.
 
 ## Features
 - Search the web using Perplexity
