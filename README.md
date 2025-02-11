@@ -10,7 +10,7 @@ A Model Context Protocol server that provides web search capabilities using Perp
 
 1. Clone or download this repository:
 ```bash
-git clone https://github.com/wysh3/perplexity-server.git
+git clone https://github.com/wysh3/perplexity-mcp-server.git
 cd perplexity-server
 ```
 
@@ -35,7 +35,7 @@ For Cline/RooCode Extension:
     "perplexity-server": {
       "command": "node",
       "args": [
-        "/path/to/perplexity-server/build/index.js"
+        "/path/to/perplexity-mcp-server/build/index.js"
       ],
       "env": {},
       "disabled": false,
