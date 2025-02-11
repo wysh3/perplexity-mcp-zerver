@@ -32,10 +32,14 @@ For Cline/RooCode Extension:
 ```json
 {
   "mcpServers": {
-    "web-search": {
+    "perplexity-server": {
       "command": "node",
-      "args": ["/path/to/web-search/build/index.js"],
-      "env": {}
+      "args": [
+        "/path/to/perplexity-server/build/index.js"
+      ],
+      "env": {},
+      "disabled": false,
+      "alwaysAllow": ["search"]
     }
   }
 }
