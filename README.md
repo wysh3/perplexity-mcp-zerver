@@ -202,7 +202,7 @@ npm start
 
 ## Credits
 
-Portions of this project incorporate code from:
+Thanks DaInfernalCoder:
 - [DaInfernalCoder/perplexity-researcher-mcp](https://github.com/DaInfernalCoder/perplexity-researcher-mcp)
 
 ## Contributing
