@@ -7,7 +7,7 @@ A research level Model Context Protocol (MCP) server implementation providing AI
 
 ## Features
 - 🔍 Web search integration via Perplexity
-- 🔑 Zero-configuration API access
+- 🔑 Use without any API Key
 - 🛠️ TypeScript-first implementation
 - 📦 Modular tool architecture
 
