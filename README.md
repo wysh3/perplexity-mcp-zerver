@@ -12,7 +12,6 @@ A research level Model Context Protocol (MCP) server implementation providing AI
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Credits](#credits)
-- [Contributing](#contributing)
 
 ## Features
 - 🔍 Web search integration via Perplexity
@@ -125,13 +124,6 @@ npm start
 
 Thanks DaInfernalCoder:
 - [DaInfernalCoder/perplexity-researcher-mcp](https://github.com/DaInfernalCoder/perplexity-researcher-mcp)
-
-## Contributing
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Commit your changes (`git commit -am 'Add some fooBar'`)
-4. Push to the branch (`git push origin feature/fooBar`)
-5. Create a new Pull Request
 
 ## Disclaimer
 This project is intended for educational and research purposes only. The author does not endorse or encourage any unauthorized automation of web services. Use responsibly!
