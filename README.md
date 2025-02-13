@@ -11,10 +11,8 @@ A research level Model Context Protocol (MCP) server implementation providing AI
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
-- [Development](#development)
 - [Credits](#credits)
 - [Contributing](#contributing)
-- [License](#license)
 
 ## Features
 - 🔍 Web search integration via Perplexity
@@ -31,30 +29,6 @@ Perform comprehensive web searches with adjustable detail levels.
 - `query`: string (required) - Search query
 - `detail_level`: "brief" | "normal" | "detailed" (optional, default="normal")
 
-**Example:**
-```typescript
-const result = await mcp.callTool('perplexity-server', 'search', {
-  query: "latest React state management patterns",
-  detail_level: "detailed"
-});
-```
-
-**Example Output:**
-```json
-{
-  "results": [
-    {
-      "title": "Modern State Management in React 2025",
-      "summary": "Comprehensive analysis of Zustand, Jotai, and Recoil...",
-      "source": "react-blog.dev"
-    }
-  ],
-  "searchDuration": 1.45
-}
-```
-
-**Note:** All searches use Perplexity's research-grade models without API keys
-
 ### 2. Get Documentation (`get_documentation`)
 Retrieve up-to-date documentation and code examples with contextual guidance.
 
@@ -62,59 +36,12 @@ Retrieve up-to-date documentation and code examples with contextual guidance.
 - `query`: string (required) - Technology/library name
 - `context`: string (optional) - Specific use case or scenario
 
-**Example:**
-```typescript
-const docs = await mcp.callTool('perplexity-server', 'get_documentation', {
-  query: "React Hooks",
-  context: "best practices for useEffect cleanup functions"
-});
-```
-
-**Example Output:**
-```json
-{
-  "overview": "React Hooks API reference...",
-  "bestPractices": [
-    "Always specify dependencies array",
-    "Cleanup async operations in useEffect"
-  ],
-  "codeSamples": {
-    "basic": "useEffect(() => {\n  // Effect logic...\n  return () => {/* Cleanup */};\n}, [deps]);"
-  }
-}
-```
-
-**Note:** Combines official docs with community best practices
-
 ### 3. Find APIs (`find_apis`)
 Discover and evaluate APIs based on technical requirements and compliance needs.
 
 **Parameters:**
 - `requirement`: string (required) - Core functionality needed
 - `context`: string (optional) - Constraints or special requirements
-
-**Example:**
-```typescript
-const apis = await mcp.callTool('perplexity-server', 'find_apis', {
-  requirement: "payment processing",
-  context: "Supports SCA (Strong Customer Authentication)"
-});
-```
-
-**Example Output:**
-```json
-{
-  "recommendations": [
-    {
-      "name": "Stripe",
-      "rating": 4.8,
-      "features": ["SCA", "3D Secure"],
-      "pricing": "2.9% + €0.30 per charge"
-    }
-  ],
-  "analysis": "Stripe provides full PSD2 compliance..."
-}
-```
 
 **Note:** Evaluates both technical and compliance aspects
 
@@ -124,24 +51,6 @@ Analyze code for outdated patterns and provide migration guidance.
 **Parameters:**
 - `code`: string (required) - Code snippet to analyze
 - `technology`: string (required) - Framework/library context
-
-**Example:**
-```typescript
-const analysis = await mcp.callTool('perplexity-server', 'check_deprecated_code', {
-  code: "class Example extends React.Component",
-  technology: "React"
-});
-```
-
-**Example Output:**
-```json
-{
-  "issue": "Class component usage",
-  "severity": "high",
-  "recommendation": "Migrate to function component with hooks",
-  "migrationExample": "const Example = () => {\n  // Hooks logic...\n}"
-}
-```
 
 **Note:** Provides version-specific migration paths
 
