@@ -5,14 +5,6 @@ A research level Model Context Protocol (MCP) server implementation providing AI
 
 <a href="https://glama.ai/mcp/servers/jmwpwn6uqh"><img width="380" height="200" src="https://glama.ai/mcp/servers/jmwpwn6uqh/badge" alt="advance perplexity mcp server" /></a>
 
-## Table of Contents
-- [Features](#features)
-- [Tools](#tools)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Credits](#credits)
-
 ## Features
 - 🔍 Web search integration via Perplexity
 - 🔑 Zero-configuration API access
