@@ -7,7 +7,7 @@ A research level Model Context Protocol (MCP) server implementation providing AI
 
 ## Table of Contents
 - [Features](#features)
-- [Available Tools](#available-tools)
+- [Tools](#tools)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
@@ -19,7 +19,7 @@ A research level Model Context Protocol (MCP) server implementation providing AI
 - 🛠️ TypeScript-first implementation
 - 📦 Modular tool architecture
 
-## Available Tools
+## Tools
 
 ### 1. Search (`search`)
 Perform comprehensive web searches with adjustable detail levels.
