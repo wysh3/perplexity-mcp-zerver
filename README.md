@@ -45,6 +45,8 @@ npm install
 npm run build
 ```
 
+> **Important**: Please restart your IDE after building the project for changes to take effect.
+
 ## Configuration
 
 Add the server to your MCP configuration:
