@@ -390,13 +390,23 @@ class PerplexityMCPServer {
 
     this.idleTimeout = setTimeout(async () => {
       console.log('Browser idle timeout reached, closing browser...');
-      if (this.page) {
-        await this.page.close();
+      try {
+        if (this.page) {
+          await this.page.close();
+          this.page = null;
+        }
+        if (this.browser) {
+          await this.browser.close();
+          this.browser = null;
+        }
+        this.isInitializing = false; // Reset initialization flag
+        console.log('Browser cleanup completed successfully');
+      } catch (error) {
+        console.error('Error during browser cleanup:', error);
+        // Reset states even if cleanup fails
         this.page = null;
-      }
-      if (this.browser) {
-        await this.browser.close();
         this.browser = null;
+        this.isInitializing = false;
       }
     }, this.IDLE_TIMEOUT_MS);
   }
