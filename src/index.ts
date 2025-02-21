@@ -100,6 +100,8 @@ class PerplexityMCPServer {
   private server: Server;
   private isInitializing = false;
   private db: Database.Database;
+  private idleTimeout: NodeJS.Timeout | null = null;
+  private readonly IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
     this.server = new Server(
@@ -381,6 +383,24 @@ class PerplexityMCPServer {
     }
   }
 
+  private resetIdleTimeout() {
+    if (this.idleTimeout) {
+      clearTimeout(this.idleTimeout);
+    }
+
+    this.idleTimeout = setTimeout(async () => {
+      console.log('Browser idle timeout reached, closing browser...');
+      if (this.page) {
+        await this.page.close();
+        this.page = null;
+      }
+      if (this.browser) {
+        await this.browser.close();
+        this.browser = null;
+      }
+    }, this.IDLE_TIMEOUT_MS);
+  }
+
   private async retryOperation<T>(
     operation: () => Promise<T>,
     maxRetries = CONFIG.MAX_RETRIES
@@ -449,24 +469,40 @@ class PerplexityMCPServer {
   }
 
   private async performSearch(query: string): Promise<string> {
-    if (!this.page) throw new Error('Page not initialized');
+    // If browser/page is not initialized, initialize it
+    if (!this.browser || !this.page) {
+      await this.initializeBrowser();
+    }
+
+    if (!this.page) {
+      throw new Error('Page initialization failed');
+    }
+
+    // Reset idle timeout
+    this.resetIdleTimeout();
+
     await this.navigateToPerplexity();
     const selector = await this.waitForSearchInput();
     if (!selector) throw new Error('Search input not found');
+
     // Clear any existing text
     await this.page.evaluate((sel) => {
       const input = document.querySelector(sel) as HTMLTextAreaElement;
       if (input) input.value = '';
     }, selector);
+
     // Type the query slowly to simulate human input
     await this.page.type(selector, query, { delay: 50 });
     await this.page.keyboard.press('Enter');
+
     await this.page.waitForSelector('.prose', {
       timeout: CONFIG.SELECTOR_TIMEOUT,
       visible: true
     });
+
     const answer = await this.waitForCompleteAnswer(this.page);
     if (!answer) throw new Error('No answer content found');
+
     return answer;
   }
 
