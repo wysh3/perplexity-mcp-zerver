@@ -488,32 +488,48 @@ class PerplexityMCPServer {
       throw new Error('Page initialization failed');
     }
 
-    // Reset idle timeout
-    this.resetIdleTimeout();
+    try {
+      // Reset idle timeout
+      this.resetIdleTimeout();
+      await this.navigateToPerplexity();
 
-    await this.navigateToPerplexity();
-    const selector = await this.waitForSearchInput();
-    if (!selector) throw new Error('Search input not found');
+      // Validate main frame is attached
+      if (!this.page.mainFrame().isDetached()) {
+        const selector = await this.waitForSearchInput();
+        if (!selector) throw new Error('Search input not found');
 
-    // Clear any existing text
-    await this.page.evaluate((sel) => {
-      const input = document.querySelector(sel) as HTMLTextAreaElement;
-      if (input) input.value = '';
-    }, selector);
+        // Clear any existing text
+        await this.page.evaluate((sel) => {
+          const input = document.querySelector(sel) as HTMLTextAreaElement;
+          if (input) input.value = '';
+        }, selector);
 
-    // Type the query slowly to simulate human input
-    await this.page.type(selector, query, { delay: 50 });
-    await this.page.keyboard.press('Enter');
+        // Type the query slowly to simulate human input
+        await this.page.type(selector, query, { delay: 50 });
+        await this.page.keyboard.press('Enter');
 
-    await this.page.waitForSelector('.prose', {
-      timeout: CONFIG.SELECTOR_TIMEOUT,
-      visible: true
-    });
+        // Wait for response with frame validation
+        await this.page.waitForSelector('.prose', {
+          timeout: CONFIG.SELECTOR_TIMEOUT,
+          visible: true
+        });
 
-    const answer = await this.waitForCompleteAnswer(this.page);
-    if (!answer) throw new Error('No answer content found');
-
-    return answer;
+        const answer = await this.waitForCompleteAnswer(this.page);
+        if (!answer) throw new Error('No answer content found');
+        return answer;
+      } else {
+        throw new Error('Main frame is detached');
+      }
+    } catch (error) {
+      if (error instanceof Error && 
+          (error.message.includes('detached') || error.message.includes('Detached'))) {
+        console.error('Frame detachment detected, attempting recovery...');
+        await this.recoveryProcedure();
+        // Retry the search once after recovery
+        return await this.performSearch(query);
+      }
+      throw error;
+    }
   }
 
   // ─── TOOL HANDLERS ──────────────────────────────────────────────────
