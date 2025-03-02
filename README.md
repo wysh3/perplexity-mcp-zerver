@@ -82,10 +82,7 @@ For Claude Desktop:
 ```
 
 ## Usage
-```bash
-# Start the server
-npm start
-```
+Just restart the IDE and ask the llm
 
 ## Credits
 
