@@ -1,4 +1,4 @@
-# Perplexity MCP Server
+# Perplexity MCP Zerver
 
 A research level Model Context Protocol (MCP) server implementation providing AI-powered research capabilities through Perplexity's infrastructure without using any API key.
 
@@ -31,8 +31,8 @@ Maintains ongoing conversations with Perplexity AI using a persistent chat histo
 
 1. Clone or download this repository:
 ```bash
-git clone https://github.com/wysh3/perplexity-mcp-server.git
-cd perplexity-mcp-server
+git clone https://github.com/wysh3/perplexity-mcp-zerver.git
+cd perplexity-mcp-zerver
 ```
 
 2. Install dependencies:
