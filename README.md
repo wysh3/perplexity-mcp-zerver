@@ -1,4 +1,5 @@
 # Perplexity MCP Zerver
+[![smithery badge](https://smithery.ai/badge/@wysh3/perplexity-mcp-zerver)](https://smithery.ai/server/@wysh3/perplexity-mcp-zerver)
 
 A research level Model Context Protocol (MCP) server implementation providing AI-powered research capabilities through Perplexity's infrastructure without using any API key.
 
@@ -29,6 +30,15 @@ Maintains ongoing conversations with Perplexity AI using a persistent chat histo
 
 ## Installation
 
+### Installing via Smithery
+
+To install Perplexity MCP Zerver for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@wysh3/perplexity-mcp-zerver):
+
+```bash
+npx -y @smithery/cli install @wysh3/perplexity-mcp-zerver --client claude
+```
+
+### Manual Installation
 1. Clone or download this repository:
 ```bash
 git clone https://github.com/wysh3/perplexity-mcp-zerver.git
