@@ -71,6 +71,7 @@ import {
   McpError,
   ErrorCode,
 } from '@modelcontextprotocol/sdk/types.js';
+import http from 'http';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
@@ -98,6 +99,8 @@ const CONFIG = {
 class PerplexityMCPServer {
   private browser: Browser | null = null;
   private page: Page | null = null;
+  private httpServer: http.Server | null = null;
+  private port: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
   private lastSearchTime = 0;
   private searchInputSelector: string = 'textarea[placeholder*="Ask"]';
   private server: Server;
@@ -1188,8 +1191,60 @@ Please provide:
 
   // ─── RUN THE SERVER ────────────────────────────────────────────────
 
+  private listTools() {
+    return [
+      {
+        name: 'search',
+        description: 'Perform comprehensive web searches with adjustable detail levels.'
+      },
+      {
+        name: 'get_documentation',
+        description: 'Retrieve up-to-date documentation and code examples with contextual guidance.'
+      },
+      {
+        name: 'find_apis',
+        description: 'Discover and evaluate APIs based on technical requirements and compliance needs.'
+      },
+      {
+        name: 'check_deprecated_code',
+        description: 'Analyze code for outdated patterns and provide migration guidance.'
+      },
+      {
+        name: 'chat_perplexity',
+        description: 'Maintains ongoing conversations with Perplexity AI using a persistent chat history.'
+      }
+    ];
+  }
+
+  private async startHttpServer() {
+    this.httpServer = http.createServer((req, res) => {
+      if (req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok' }));
+      } else if (req.url === '/tools') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(this.listTools()));
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+
+    return new Promise<void>((resolve, reject) => {
+      this.httpServer?.listen(this.port, () => {
+        console.log(`HTTP server listening on port ${this.port}`);
+        resolve();
+      }).on('error', (err) => {
+        console.error('Failed to start HTTP server:', err);
+        reject(err);
+      });
+    });
+  }
+
   async run() {
     try {
+      // Start HTTP server for health checks and endpoint access
+      await this.startHttpServer();
       await this.initializeBrowser();
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
@@ -1198,6 +1253,19 @@ Please provide:
       console.error('Failed to start server:', error);
       process.exit(1);
     }
+  }
+
+  public async stop() {
+    if (this.httpServer) {
+      await new Promise<void>((resolve) => this.httpServer?.close(() => resolve()));
+    }
+    if (this.browser) {
+      await this.browser.close();
+    }
+    if (this.db) {
+      this.db.close();
+    }
+    await this.server.close();
   }
 }
 
