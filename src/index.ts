@@ -108,6 +108,7 @@ class PerplexityMCPServer {
   private db: Database.Database;
   private idleTimeout: NodeJS.Timeout | null = null;
   private readonly IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly LAZY_INIT = process.env.LAZY_INIT === 'true';
   
   constructor() {
     // Redirect console.log and console.error to stderr
@@ -131,6 +132,16 @@ class PerplexityMCPServer {
     this.initializeDatabase();
   
     this.setupToolHandlers();
+  
+    // Initialize browser only if not in lazy mode
+    if (!this.LAZY_INIT) {
+      console.log('Initializing browser immediately (LAZY_INIT=false)');
+      this.initializeBrowser().catch(err => {
+        console.error('Initial browser setup failed:', err);
+      });
+    } else {
+      console.log('Browser initialization deferred (LAZY_INIT=true)');
+    }
   
     // Graceful shutdown on SIGINT
     process.on('SIGINT', async () => {
