@@ -1,0 +1,43 @@
+{
+  "name": "perplexity-mcp-server",
+  "version": "1.0.0",
+  "description": "A research level Model Context Protocol (MCP) server implementation providing AI-powered research capabilities through Perplexity's infrastructure without using any API key.",
+  "author": "wysh3",
+  "license": "ISC",
+  "type": "mcp-server",
+  "main": "build/index.js",
+  "runtime": "node",
+  "tools": [
+    {
+      "name": "search",
+      "description": "Perform comprehensive web searches with adjustable detail levels."
+    },
+    {
+      "name": "get_documentation",
+      "description": "Retrieve up-to-date documentation and code examples with contextual guidance."
+    },
+    {
+      "name": "find_apis",
+      "description": "Discover and evaluate APIs based on technical requirements and compliance needs."
+    },
+    {
+      "name": "check_deprecated_code",
+      "description": "Analyze code for outdated patterns and provide migration guidance."
+    },
+    {
+      "name": "chat_perplexity",
+      "description": "Maintains ongoing conversations with Perplexity AI using a persistent chat history."
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wysh3/perplexity-mcp-zerver.git"
+  },
+  "build": {
+    "command": "npm install && npm run build"
+  },
+  "dependencies": {
+    "node": ">=18.0.0"
+  },
+  "tags": ["search", "perplexity", "research", "mcp", "ai"]
+}
