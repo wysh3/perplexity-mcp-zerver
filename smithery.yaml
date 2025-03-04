@@ -1,0 +1,53 @@
+# Smithery Configuration
+name: perplexity-mcp-server
+version: 1.0.0
+
+# Build configuration
+build:
+  dockerfile: Dockerfile
+  context: .
+
+# Runtime configuration
+runtime:
+  type: container
+  port: 3000
+
+# Resource limits
+resources:
+  cpu: 1
+  memory: 1Gi
+
+# Environment variables
+env:
+  NODE_ENV: production
+
+# Health check configuration
+healthCheck:
+  path: /health
+  initialDelaySeconds: 10
+  periodSeconds: 30
+  timeoutSeconds: 5
+
+# Scaling configuration
+scaling:
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+# Network configuration
+network:
+  ingress:
+    enabled: true
+    path: /
+
+# Logging configuration
+logging:
+  level: info
+
+# Tags
+tags:
+  - search
+  - perplexity
+  - research
+  - mcp
+  - ai
