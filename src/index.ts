@@ -108,13 +108,19 @@ class PerplexityMCPServer {
   private db: Database.Database;
   private idleTimeout: NodeJS.Timeout | null = null;
   private readonly IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-
+  
   constructor() {
+    // Redirect console.log and console.error to stderr
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    console.log = (...args) => process.stderr.write(args.join(' ') + '\n');
+    console.error = (...args) => process.stderr.write('[ERROR] ' + args.join(' ') + '\n');
+  
     this.server = new Server(
       { name: 'perplexity-mcp', version: '1.0.0' },
       { capabilities: { tools: {} } }
     );
-
+  
     // Initialize SQLite database (chat history)
     const dbPath = join(homedir(), '.perplexity-mcp', 'chat_history.db');
     const dbDir = dirname(dbPath);
@@ -123,9 +129,9 @@ class PerplexityMCPServer {
     }
     this.db = new Database(dbPath, { fileMustExist: false });
     this.initializeDatabase();
-
+  
     this.setupToolHandlers();
-
+  
     // Graceful shutdown on SIGINT
     process.on('SIGINT', async () => {
       if (this.browser) {
@@ -138,9 +144,9 @@ class PerplexityMCPServer {
       process.exit(0);
     });
   }
-
+  
   // ─── DATABASE METHODS ────────────────────────────────────────────────
-
+  
   private initializeDatabase() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS chats (
@@ -159,7 +165,7 @@ class PerplexityMCPServer {
       )
     `);
   }
-
+  
   private getChatHistory(chatId: string): ChatMessage[] {
     const messages = this.db
       .prepare(
@@ -168,7 +174,7 @@ class PerplexityMCPServer {
       .all(chatId);
     return messages as ChatMessage[];
   }
-
+  
   private saveChatMessage(chatId: string, message: ChatMessage) {
     // Ensure chat exists
     this.db.prepare('INSERT OR IGNORE INTO chats (id) VALUES (?)').run(chatId);
@@ -179,9 +185,9 @@ class PerplexityMCPServer {
       )
       .run(chatId, message.role, message.content);
   }
-
+  
   // ─── BROWSER / PUPPETEER METHODS ───────────────────────────────────────
-
+  
   private async initializeBrowser() {
     if (this.isInitializing) {
       console.log('Browser initialization already in progress...');
@@ -219,7 +225,7 @@ class PerplexityMCPServer {
       this.isInitializing = false;
     }
   }
-
+  
   private async navigateToPerplexity() {
     if (!this.page) throw new Error('Page not initialized');
     try {
@@ -293,7 +299,7 @@ class PerplexityMCPServer {
       throw error;
     }
   }
-
+  
   private async setupBrowserEvasion() {
     if (!this.page) return;
     await this.page.evaluateOnNewDocument(() => {
@@ -368,7 +374,7 @@ class PerplexityMCPServer {
       };
     });
   }
-
+  
   private async waitForSearchInput(
     timeout = CONFIG.SELECTOR_TIMEOUT
   ): Promise<string | null> {
@@ -407,7 +413,7 @@ class PerplexityMCPServer {
     console.error('No working search input found');
     return null;
   }
-
+  
   private async checkForCaptcha(): Promise<boolean> {
     if (!this.page) return false;
     const captchaIndicators = [
@@ -423,7 +429,7 @@ class PerplexityMCPServer {
       return selectors.some((selector) => !!document.querySelector(selector));
     }, captchaIndicators);
   }
-
+  
   private async recoveryProcedure() {
     console.log('Starting recovery procedure...');
     try {
@@ -460,12 +466,12 @@ class PerplexityMCPServer {
       }
     }
   }
-
+  
   private resetIdleTimeout() {
     if (this.idleTimeout) {
       clearTimeout(this.idleTimeout);
     }
-
+  
     this.idleTimeout = setTimeout(async () => {
       console.log('Browser idle timeout reached, closing browser...');
       try {
@@ -488,7 +494,7 @@ class PerplexityMCPServer {
       }
     }, this.IDLE_TIMEOUT_MS);
   }
-
+  
   private async retryOperation<T>(
     operation: () => Promise<T>,
     maxRetries = CONFIG.MAX_RETRIES
@@ -604,7 +610,7 @@ class PerplexityMCPServer {
     console.error(errorMessage);
     throw new Error(errorMessage);
   }
-
+  
   private async waitForCompleteAnswer(page: Page): Promise<string> {
     // Set a timeout to ensure we don't wait indefinitely, but make it much longer
     const timeoutPromise = new Promise<string>((_, reject) => {
@@ -612,7 +618,7 @@ class PerplexityMCPServer {
         reject(new Error('Waiting for complete answer timed out'));
       }, CONFIG.ANSWER_WAIT_TIMEOUT); // Use the dedicated answer wait timeout
     });
-
+  
     const answerPromise = page.evaluate(async () => {
       const getAnswer = () => {
         const elements = Array.from(document.querySelectorAll('.prose'));
@@ -683,7 +689,7 @@ class PerplexityMCPServer {
       }
       return lastAnswer || 'No answer content found. The website may be experiencing issues.';
     });
-
+  
     try {
       // Race between the answer generation and the timeout
       return await Promise.race([answerPromise, timeoutPromise]);
@@ -719,7 +725,7 @@ class PerplexityMCPServer {
       }
     }
   }
-
+  
   private async performSearch(query: string): Promise<string> {
     // Set a global timeout for the entire operation with a much longer duration
     const operationTimeout = setTimeout(() => {
@@ -728,18 +734,18 @@ class PerplexityMCPServer {
         console.error('Recovery after timeout failed:', err);
       });
     }, CONFIG.PAGE_TIMEOUT - CONFIG.MCP_TIMEOUT_BUFFER);
-
+  
     try {
       // If browser/page is not initialized, initialize it
       if (!this.browser || !this.page) {
         console.log('Browser or page not initialized, initializing now...');
         await this.initializeBrowser();
       }
-
+  
       if (!this.page) {
         throw new Error('Page initialization failed');
       }
-
+  
       // Reset idle timeout
       this.resetIdleTimeout();
       
@@ -747,7 +753,7 @@ class PerplexityMCPServer {
       return await this.retryOperation(async () => {
         console.log(`Navigating to Perplexity for query: "${query.substring(0, 30)}${query.length > 30 ? '...' : ''}"`);
         await this.navigateToPerplexity();
-
+  
         // Validate main frame is attached
         if (!this.page || this.page.mainFrame().isDetached()) {
           console.error('Main frame is detached, will retry with new browser instance');
@@ -763,7 +769,7 @@ class PerplexityMCPServer {
           }
           throw new Error('Search input not found');
         }
-
+  
         console.log(`Found search input with selector: ${selector}`);
         
         // Clear any existing text with multiple approaches for reliability
@@ -781,13 +787,13 @@ class PerplexityMCPServer {
           console.warn('Error clearing input field:', clearError);
           // Continue anyway, as the typing might still work
         }
-
+  
         // Type the query with variable delay to appear more human-like
         console.log('Typing search query...');
         const typeDelay = Math.floor(Math.random() * 20) + 20; // Random delay between 20-40ms
         await this.page.type(selector, query, { delay: typeDelay });
         await this.page.keyboard.press('Enter');
-
+  
         // Wait for response with multiple selector options and extended timeout
         console.log('Waiting for response...');
         const proseSelectors = [
@@ -831,7 +837,7 @@ class PerplexityMCPServer {
           
           throw new Error('Timed out waiting for response from Perplexity');
         }
-
+  
         console.log('Waiting for complete answer...');
         const answer = await this.waitForCompleteAnswer(this.page);
         console.log(`Answer received (${answer.length} characters)`);
@@ -911,9 +917,9 @@ class PerplexityMCPServer {
       return 'Unable to extract answer content. The website structure may have changed.';
     }
   }
-
+  
   // ─── TOOL HANDLERS ──────────────────────────────────────────────────
-
+  
   private setupToolHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
@@ -1021,7 +1027,7 @@ class PerplexityMCPServer {
         }
       ]
     }));
-
+  
     this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       // Set a timeout for the entire MCP request to ensure we respond before the MCP client times out
       const requestTimeout = setTimeout(() => {
@@ -1188,9 +1194,9 @@ Please provide:
       }
     });
   }
-
+  
   // ─── RUN THE SERVER ────────────────────────────────────────────────
-
+  
   private listTools() {
     return [
       {
@@ -1215,7 +1221,7 @@ Please provide:
       }
     ];
   }
-
+  
   private async startHttpServer() {
     this.httpServer = http.createServer((req, res) => {
       if (req.url === '/health') {
@@ -1229,7 +1235,7 @@ Please provide:
         res.end();
       }
     });
-
+  
     return new Promise<void>((resolve, reject) => {
       this.httpServer?.listen(this.port, () => {
         console.log(`HTTP server listening on port ${this.port}`);
