@@ -58,7 +58,7 @@ For Cline/RooCode Extension:
     "perplexity-server": {
       "command": "node",
       "args": [
-        "/path/to/perplexity-mcp-server/build/index.js"
+        "/path/to/perplexity-mcp-zerver/build/index.js"
       ],
       "env": {},
       "disabled": false,
@@ -74,7 +74,7 @@ For Claude Desktop:
   "mcpServers": {
     "web-search": {
       "command": "node",
-      "args": ["/path/to/web-search/build/index.js"],
+      "args": ["/path/to/perplexity-mcp-zerver/build/index.js"],
       "env": {}
     }
   }
