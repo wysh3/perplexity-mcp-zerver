@@ -28,7 +28,7 @@ Analyze code for outdated patterns and provide migration guidance.
 Maintains ongoing conversations with Perplexity AI using a persistent chat history.
 
 ## Installation
-
+> just copy and paste the readme and let the AI take care of the rest
 1. Clone or download this repository:
 ```bash
 git clone https://github.com/wysh3/perplexity-mcp-zerver.git
