@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Global declarations to augment the Window interface with chrome properties
+// ─── TYPE DECLARATIONS ─────────────────────────────────────────────────
 declare global {
   interface Window {
     chrome: {
@@ -78,33 +78,50 @@ import { dirname, join } from 'path';
 import { homedir } from 'os';
 import crypto from 'crypto';
 
+// ─── INTERFACES ────────────────────────────────────────────────────────
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
+// ─── CONFIGURATION ─────────────────────────────────────────────────────
 const CONFIG = {
-  SEARCH_COOLDOWN: 5000, // Reduced from 10000 to 5000
-  PAGE_TIMEOUT: 180000, // Increased from 120000 to 180000
-  SELECTOR_TIMEOUT: 90000, // Increased from 60000 to 90000
-  MAX_RETRIES: 10, // Increased from 7 to 10
-  MCP_TIMEOUT_BUFFER: 60000, // Increased from 30000 to 60000
-  ANSWER_WAIT_TIMEOUT: 120000, // New timeout specifically for waiting for answers
-  RECOVERY_WAIT_TIME: 15000, // Increased from 10000 to 15000
-  USER_AGENT:
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  SEARCH_COOLDOWN: 5000,
+  PAGE_TIMEOUT: 180000, 
+  SELECTOR_TIMEOUT: 90000,
+  MAX_RETRIES: 10,
+  MCP_TIMEOUT_BUFFER: 60000,
+  ANSWER_WAIT_TIMEOUT: 120000,
+  RECOVERY_WAIT_TIME: 15000,
+  USER_AGENT: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  
+  // Adaptive timeout profiles (in ms)
+  TIMEOUT_PROFILES: {
+    navigation: 45000,
+    selector: 15000,
+    content: 120000,
+    recovery: 30000
+  }
 } as const;
 
+// ─── MAIN SERVER CLASS ─────────────────────────────────────────────────
 class PerplexityMCPServer {
+  // Browser state
   private browser: Browser | null = null;
   private page: Page | null = null;
-  private lastSearchTime = 0;
-  private searchInputSelector: string = 'textarea[placeholder*="Ask"]';
-  private server: Server;
   private isInitializing = false;
+  private searchInputSelector: string = 'textarea[placeholder*="Ask"]';
+  private lastSearchTime = 0;
+  
+  // Database state
   private db: Database.Database;
+  
+  // Server state
+  private server: Server;
   private idleTimeout: NodeJS.Timeout | null = null;
   private readonly IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  
+  private operationCount = 0;
 
   constructor() {
     this.server = new Server(
@@ -421,41 +438,79 @@ class PerplexityMCPServer {
     }, captchaIndicators);
   }
 
-  private async recoveryProcedure() {
-    console.log('Starting recovery procedure...');
+  private determineRecoveryLevel(error?: Error): number {
+    if (!error) return 3; // Default to full restart if no error info
+    
+    const errorMsg = error.message.toLowerCase();
+    if (errorMsg.includes('frame') || errorMsg.includes('detached')) {
+      return 2; // New page for frame issues
+    }
+    if (errorMsg.includes('timeout') || errorMsg.includes('navigation')) {
+      return 1; // Refresh for timeouts/navigation
+    }
+    return 3; // Full restart for other errors
+  }
+
+  private async recoveryProcedure(error?: Error) {
+    const recoveryLevel = this.determineRecoveryLevel(error);
+    const opId = ++this.operationCount;
+    
+    this.log('info', 'Starting recovery procedure');
+
     try {
-      if (this.page) {
-        await this.page.close().catch(err => console.error('Error closing page:', err));
+      switch(recoveryLevel) {
+        case 1: // Page refresh
+          this.log('info', 'Attempting page refresh');
+          if (this.page) {
+            await this.page.reload({timeout: CONFIG.TIMEOUT_PROFILES.navigation});
+          }
+          break;
+          
+        case 2: // New page
+          this.log('info', 'Creating new page instance');
+          if (this.page) {
+            await this.page.close();
+          }
+          if (this.browser) {
+            this.page = await this.browser.newPage();
+            await this.setupBrowserEvasion();
+            await this.page.setViewport({ width: 1920, height: 1080 });
+            await this.page.setUserAgent(CONFIG.USER_AGENT);
+          }
+          break;
+          
+        case 3: // Full restart
+        default:
+          this.log('info', 'Performing full browser restart');
+          if (this.page) {
+            await this.page.close();
+          }
+          if (this.browser) {
+            await this.browser.close();
+          }
+          this.page = null;
+          this.browser = null;
+          await new Promise(resolve => setTimeout(resolve, CONFIG.RECOVERY_WAIT_TIME));
+          await this.initializeBrowser();
+          break;
       }
-      if (this.browser) {
-        await this.browser.close().catch(err => console.error('Error closing browser:', err));
-      }
-      this.page = null;
-      this.browser = null;
-      // Wait before retrying - use the configured recovery wait time
-      console.log(`Waiting ${CONFIG.RECOVERY_WAIT_TIME/1000} seconds before reinitializing browser...`);
-      await new Promise((resolve) => setTimeout(resolve, CONFIG.RECOVERY_WAIT_TIME));
-      await this.initializeBrowser();
-      console.log('Recovery procedure completed successfully');
-    } catch (error) {
-      console.error('Recovery failed:', error);
-      // Wait a bit longer if recovery failed
-      await new Promise((resolve) => setTimeout(resolve, CONFIG.RECOVERY_WAIT_TIME * 1.5));
-      // Try one more time with minimal setup
-      try {
-        console.log('Attempting simplified browser initialization...');
-        this.browser = await puppeteer.launch({
-          headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
-        this.page = await this.browser.newPage();
-        await this.page.setUserAgent(CONFIG.USER_AGENT);
-        console.log('Simplified browser initialization succeeded');
-      } catch (secondError) {
-        console.error('Secondary recovery attempt failed:', secondError);
-        throw error; // Throw the original error
+      
+      this.log('info', 'Recovery completed');
+    } catch (recoveryError) {
+      this.log('error', 'Recovery failed: ' + (recoveryError instanceof Error ? recoveryError.message : String(recoveryError)));
+      
+      // Fall back to more aggressive recovery if initial attempt fails
+      if (recoveryLevel < 3) {
+        this.log('info', 'Attempting higher level recovery');
+        await this.recoveryProcedure(new Error('Fallback recovery'));
+      } else {
+        throw recoveryError;
       }
     }
+  }
+
+  private log(level: 'info'|'error'|'warn', message: string) {
+    console[level](message);
   }
 
   private resetIdleTimeout() {
@@ -727,14 +782,17 @@ class PerplexityMCPServer {
     }, CONFIG.PAGE_TIMEOUT - CONFIG.MCP_TIMEOUT_BUFFER);
 
     try {
-      // If browser/page is not initialized, initialize it
-      if (!this.browser || !this.page) {
-        console.log('Browser or page not initialized, initializing now...');
+      // If browser/page is not initialized or page is closed, initialize it
+      if (!this.browser || !this.page || (this.page && this.page.isClosed())) {
+        console.log('Browser/page not initialized or page closed, initializing now...');
+        if (this.page && !this.page.isClosed()) {
+          await this.page.close();
+        }
         await this.initializeBrowser();
       }
 
-      if (!this.page) {
-        throw new Error('Page initialization failed');
+      if (!this.page || this.page.isClosed()) {
+        throw new Error('Page initialization failed or page was closed');
       }
 
       // Reset idle timeout
@@ -911,13 +969,118 @@ class PerplexityMCPServer {
 
   // ─── TOOL HANDLERS ──────────────────────────────────────────────────
 
+  // ─── TOOL IMPLEMENTATIONS ────────────────────────────────────────────
+
+  private async handleChatPerplexity(args: {message: string, chat_id?: string}): Promise<string> {
+    const { message, chat_id = crypto.randomUUID() } = args;
+    const history = this.getChatHistory(chat_id);
+    const userMessage: ChatMessage = { role: 'user', content: message };
+    this.saveChatMessage(chat_id, userMessage);
+    
+    let conversationPrompt = '';
+    history.forEach((msg) => {
+      conversationPrompt += msg.role === 'user' 
+        ? `User: ${msg.content}\n` 
+        : `Assistant: ${msg.content}\n`;
+    });
+    conversationPrompt += `User: ${message}\n`;
+    
+    return await this.performSearch(conversationPrompt);
+  }
+
+  private async handleGetDocumentation(args: {query: string, context?: string}): Promise<string> {
+    const { query, context = '' } = args;
+    const prompt = `Provide comprehensive documentation and usage examples for ${query}. ${
+      context ? 'Focus on: ' + context : ''
+    } Include:
+1. Basic overview and purpose
+2. Key features and capabilities
+3. Installation/setup if applicable
+4. Common usage examples with code snippets
+5. Best practices and performance considerations  
+6. Common pitfalls to avoid
+7. Version compatibility information
+8. Links to official documentation
+9. Community resources (forums, chat channels)
+10. Related tools/libraries that work well with it`;
+    return await this.performSearch(prompt);
+  }
+
+  private async handleFindApis(args: {requirement: string, context?: string}): Promise<string> {
+    const { requirement, context = '' } = args;
+    const prompt = `Find and evaluate APIs that could be used for: ${requirement}. ${
+      context ? 'Context: ' + context : ''
+    } For each API, provide:
+1. Name and brief description
+2. Key features and capabilities  
+3. Pricing model and rate limits
+4. Authentication methods
+5. Integration complexity
+6. Documentation quality and examples
+7. Community support and popularity
+8. Any potential limitations or concerns
+9. Code examples for basic usage
+10. Comparison with similar APIs
+11. SDK availability and language support`;
+    return await this.performSearch(prompt);
+  }
+
+  private async handleCheckDeprecatedCode(args: {code: string, technology?: string}): Promise<string> {
+    const { code, technology = '' } = args;
+    const prompt = `Analyze this code for deprecated features or patterns${
+      technology ? ' in ' + technology : ''
+    }:
+
+${code}
+
+Please provide:
+1. Identification of deprecated features/methods
+2. Current recommended alternatives  
+3. Step-by-step migration guide
+4. Impact assessment of the changes
+5. Deprecation timeline if available
+6. Code examples before/after updating
+7. Performance implications
+8. Backward compatibility considerations
+9. Testing recommendations for the changes`;
+    return await this.performSearch(prompt);
+  }
+
+  private async handleSearch(args: {query: string, detail_level?: 'brief'|'normal'|'detailed'}): Promise<string> {
+    const { query, detail_level = 'normal' } = args;
+    let prompt = query;
+    switch (detail_level) {
+      case 'brief':
+        prompt = `Provide a brief, concise answer to: ${query}`;
+        break;
+      case 'detailed':
+        prompt = `Provide a comprehensive, detailed analysis of: ${query}. Include relevant examples, context, and supporting information where applicable.`;
+        break;
+      default:
+        prompt = `Provide a clear, balanced answer to: ${query}. Include key points and relevant context.`;
+    }
+    return await this.performSearch(prompt);
+  }
+
+  // ─── TOOL HANDLER SETUP ──────────────────────────────────────────────
+
+  // ─── TOOL HANDLER TYPES ──────────────────────────────────────────────
+  private toolHandlers: {
+    [key: string]: (args: any) => Promise<string>;
+  } = {
+    chat_perplexity: this.handleChatPerplexity.bind(this),
+    get_documentation: this.handleGetDocumentation.bind(this),
+    find_apis: this.handleFindApis.bind(this),
+    check_deprecated_code: this.handleCheckDeprecatedCode.bind(this),
+    search: this.handleSearch.bind(this)
+  };
+
   private setupToolHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
           name: 'chat_perplexity',
-          description:
-            'Maintains ongoing conversations with Perplexity AI using a persistent chat history. Starts new chats or continues existing ones with full context.',
+          description: 'Maintains ongoing conversations with Perplexity AI using a persistent chat history. Starts new chats or continues existing ones with full context.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -927,8 +1090,7 @@ class PerplexityMCPServer {
               },
               chat_id: {
                 type: 'string',
-                description:
-                  'Optional: ID of an existing chat to continue. If not provided, a new chat will be created.'
+                description: 'Optional: ID of an existing chat to continue. If not provided, a new chat will be created.'
               }
             },
             required: ['message']
@@ -936,8 +1098,7 @@ class PerplexityMCPServer {
         },
         {
           name: 'search',
-          description:
-            'Perform a search query on Perplexity.ai with an optional detail level.',
+          description: 'Perform a search query on Perplexity.ai with an optional detail level.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -947,8 +1108,7 @@ class PerplexityMCPServer {
               },
               detail_level: {
                 type: 'string',
-                description:
-                  'Optional: Desired level of detail (brief, normal, detailed)',
+                description: 'Optional: Desired level of detail (brief, normal, detailed)',
                 enum: ['brief', 'normal', 'detailed']
               }
             },
@@ -957,15 +1117,13 @@ class PerplexityMCPServer {
         },
         {
           name: 'get_documentation',
-          description:
-            'Get documentation and usage examples for a specific technology, library, or API.',
+          description: 'Get documentation and usage examples for a specific technology, library, or API.',
           inputSchema: {
             type: 'object',
             properties: {
               query: {
                 type: 'string',
-                description:
-                  'The technology, library, or API to get documentation for'
+                description: 'The technology, library, or API to get documentation for'
               },
               context: {
                 type: 'string',
@@ -977,20 +1135,17 @@ class PerplexityMCPServer {
         },
         {
           name: 'find_apis',
-          description:
-            'Find and evaluate APIs that could be integrated into a project.',
+          description: 'Find and evaluate APIs that could be integrated into a project.',
           inputSchema: {
             type: 'object',
             properties: {
               requirement: {
                 type: 'string',
-                description:
-                  'The functionality or requirement you are looking to fulfill'
+                description: 'The functionality or requirement you are looking to fulfill'
               },
               context: {
                 type: 'string',
-                description:
-                  'Additional context about the project or specific needs'
+                description: 'Additional context about the project or specific needs'
               }
             },
             required: ['requirement']
@@ -998,8 +1153,7 @@ class PerplexityMCPServer {
         },
         {
           name: 'check_deprecated_code',
-          description:
-            'Check if code or dependencies might be using deprecated features.',
+          description: 'Check if code or dependencies might be using deprecated features.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -1009,8 +1163,7 @@ class PerplexityMCPServer {
               },
               technology: {
                 type: 'string',
-                description:
-                  'The technology or framework context (e.g., "React", "Node.js")'
+                description: 'The technology or framework context (e.g., "React", "Node.js")'
               }
             },
             required: ['code']
@@ -1020,146 +1173,41 @@ class PerplexityMCPServer {
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
-      // Set a timeout for the entire MCP request to ensure we respond before the MCP client times out
+      // Set a timeout for the entire MCP request
       const requestTimeout = setTimeout(() => {
         console.error('MCP request is taking too long, this might lead to a timeout');
       }, 60000); // 60 seconds warning
       
       try {
-        switch (request.params.name) {
-          // ── CHAT WITH HISTORY ──
-          case 'chat_perplexity': {
-            const { message, chat_id = crypto.randomUUID() } =
-              request.params.arguments as { message: string; chat_id?: string };
-            const history = this.getChatHistory(chat_id);
-            const userMessage: ChatMessage = { role: 'user', content: message };
-            this.saveChatMessage(chat_id, userMessage);
-            // Build a conversation prompt from history
-            let conversationPrompt = '';
-            history.forEach((msg) => {
-              conversationPrompt +=
-                msg.role === 'user'
-                  ? `User: ${msg.content}\n`
-                  : `Assistant: ${msg.content}\n`;
-            });
-            conversationPrompt += `User: ${message}\n`;
-            const responseContent = await this.performSearch(conversationPrompt);
-            const assistantMessage: ChatMessage = {
-              role: 'assistant',
-              content: responseContent
-            };
-            this.saveChatMessage(chat_id, assistantMessage);
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify(
-                    { chat_id, response: responseContent },
-                    null,
-                    2
-                  )
-                }
-              ]
-            };
-          }
-          // ── GET DOCUMENTATION ──
-          case 'get_documentation': {
-            const { query, context = '' } =
-              request.params.arguments as { query: string; context?: string };
-            const prompt = `Provide comprehensive documentation and usage examples for ${query}. ${
-              context ? 'Focus on: ' + context : ''
-            } Include:
-1. Basic overview and purpose
-2. Key features and capabilities
-3. Installation/setup if applicable
-4. Common usage examples
-5. Best practices
-6. Common pitfalls to avoid
-7. Links to official documentation if available.`;
-            const responseContent = await this.performSearch(prompt);
-            return {
-              content: [{ type: 'text', text: responseContent }]
-            };
-          }
-          // ── FIND APIS ──
-          case 'find_apis': {
-            const { requirement, context = '' } =
-              request.params.arguments as { requirement: string; context?: string };
-            const prompt = `Find and evaluate APIs that could be used for: ${requirement}. ${
-              context ? 'Context: ' + context : ''
-            } For each API, provide:
-1. Name and brief description
-2. Key features and capabilities
-3. Pricing model (if available)
-4. Integration complexity
-5. Documentation quality
-6. Community support and popularity
-7. Any potential limitations or concerns
-8. Code example of basic usage.`;
-            const responseContent = await this.performSearch(prompt);
-            return {
-              content: [{ type: 'text', text: responseContent }]
-            };
-          }
-          // ── CHECK DEPRECATED CODE ──
-          case 'check_deprecated_code': {
-            const { code, technology = '' } =
-              request.params.arguments as { code: string; technology?: string };
-            const prompt = `Analyze this code for deprecated features or patterns${
-              technology ? ' in ' + technology : ''
-            }:
-
-${code}
-
-Please provide:
-1. Identification of any deprecated features, methods, or patterns
-2. Current recommended alternatives
-3. Migration steps if applicable
-4. Impact of the deprecation
-5. Timeline of deprecation if known
-6. Code examples showing how to update to current best practices.`;
-            const responseContent = await this.performSearch(prompt);
-            return {
-              content: [{ type: 'text', text: responseContent }]
-            };
-          }
-          // ── GENERAL SEARCH ──
-          case 'search': {
-            const { query, detail_level = 'normal' } =
-              request.params.arguments as {
-                query: string;
-                detail_level?: 'brief' | 'normal' | 'detailed';
-              };
-            let prompt = query;
-            switch (detail_level) {
-              case 'brief':
-                prompt = `Provide a brief, concise answer to: ${query}`;
-                break;
-              case 'detailed':
-                prompt = `Provide a comprehensive, detailed analysis of: ${query}. Include relevant examples, context, and supporting information where applicable.`;
-                break;
-              default:
-                prompt = `Provide a clear, balanced answer to: ${query}. Include key points and relevant context.`;
-            }
-            const responseContent = await this.performSearch(prompt);
-            return {
-              content: [{ type: 'text', text: responseContent }]
-            };
-          }
-          default:
-            throw new McpError(
-              ErrorCode.MethodNotFound,
-              `Unknown tool: ${request.params.name}`
-            );
+        const toolName = request.params.name;
+        const handler = this.toolHandlers[toolName];
+        
+        if (!handler) {
+          throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${toolName}`);
         }
+
+        const responseContent = await handler(request.params.arguments);
+        
+        // Special case for chat to return chat_id
+        if (toolName === 'chat_perplexity') {
+          const chatId = request.params.arguments.chat_id || crypto.randomUUID();
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({ chat_id: chatId, response: responseContent }, null, 2)
+            }]
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: responseContent }]
+        };
       } catch (error) {
         console.error('Error in tool handler:', error);
         
-        // Handle different types of errors with appropriate MCP error codes
         if (error instanceof Error) {
           const errorMsg = error.message;
           
-          // Handle timeout errors specifically
           if (errorMsg.includes('timeout') || errorMsg.includes('Timed out')) {
             console.error('Timeout detected in MCP request');
             return {
@@ -1170,7 +1218,6 @@ Please provide:
             };
           }
           
-          // For other errors, return a user-friendly message
           return {
             content: [{ 
               type: 'text', 

@@ -62,7 +62,8 @@ For Cline/RooCode Extension:
       ],
       "env": {},
       "disabled": false,
-      "alwaysAllow": ["search"]
+      "alwaysAllow": ["search"],
+      "timeout": 300
     }
   }
 }
