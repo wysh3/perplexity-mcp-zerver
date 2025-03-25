@@ -1081,93 +1081,405 @@ Please provide:
         {
           name: 'chat_perplexity',
           description: 'Maintains ongoing conversations with Perplexity AI using a persistent chat history. Starts new chats or continues existing ones with full context.',
+          category: 'Conversation',
+          keywords: ['chat', 'conversation', 'dialog', 'discussion'],
+          use_cases: [
+            'Continuing multi-turn conversations',
+            'Context-aware question answering',
+            'Follow-up questions'
+          ],
           inputSchema: {
             type: 'object',
             properties: {
               message: {
                 type: 'string',
-                description: 'The message to send to Perplexity AI'
+                description: 'The message to send to Perplexity AI',
+                examples: ['Explain quantum computing', 'Continue our previous discussion about AI safety']
               },
               chat_id: {
                 type: 'string',
-                description: 'Optional: ID of an existing chat to continue. If not provided, a new chat will be created.'
+                description: 'Optional: ID of an existing chat to continue. If not provided, a new chat will be created.',
+                examples: ['123e4567-e89b-12d3-a456-426614174000']
               }
             },
             required: ['message']
-          }
+          },
+          outputSchema: {
+            type: 'object',
+            properties: {
+              chat_id: {
+                type: 'string',
+                description: 'ID of the chat session'
+              },
+              response: {
+                type: 'string',
+                description: 'Perplexity AI response to the message'
+              }
+            }
+          },
+          examples: [
+            {
+              description: 'Simple question',
+              input: { message: 'Explain quantum computing basics' },
+              output: { 
+                chat_id: 'new-chat-id',
+                response: 'Quantum computing uses qubits that can exist in superposition...'
+              }
+            },
+            {
+              description: 'Continuing conversation',
+              input: { 
+                message: 'How does that compare to classical computing?',
+                chat_id: 'existing-chat-id' 
+              },
+              output: {
+                chat_id: 'existing-chat-id',
+                response: 'Classical computers use bits that are either 0 or 1, while quantum...'
+              }
+            }
+          ],
+          related_tools: ['search', 'get_documentation']
         },
         {
           name: 'search',
           description: 'Perform a search query on Perplexity.ai with an optional detail level.',
+          category: 'Information Retrieval',
+          keywords: ['search', 'query', 'information', 'lookup'],
+          use_cases: [
+            'General knowledge questions',
+            'Fact-finding missions',
+            'Research assistance'
+          ],
           inputSchema: {
             type: 'object',
             properties: {
               query: {
                 type: 'string',
-                description: 'The search query'
+                description: 'The search query',
+                examples: ['What is quantum computing?', 'Latest developments in AI safety']
               },
               detail_level: {
                 type: 'string',
                 description: 'Optional: Desired level of detail (brief, normal, detailed)',
-                enum: ['brief', 'normal', 'detailed']
+                enum: ['brief', 'normal', 'detailed'],
+                examples: ['detailed']
               }
             },
             required: ['query']
-          }
+          },
+          outputSchema: {
+            type: 'object',
+            properties: {
+              response: {
+                type: 'string',
+                description: 'The search results from Perplexity'
+              }
+            }
+          },
+          examples: [
+            {
+              description: 'Brief fact check',
+              input: { 
+                query: 'Capital of France',
+                detail_level: 'brief'
+              },
+              output: {
+                response: 'The capital of France is Paris.'
+              }
+            },
+            {
+              description: 'Detailed research query',
+              input: {
+                query: 'Explain quantum computing principles',
+                detail_level: 'detailed'
+              },
+              output: {
+                response: 'Quantum computing uses quantum bits or qubits...'
+              }
+            }
+          ],
+          related_tools: ['chat_perplexity', 'get_documentation']
         },
         {
           name: 'get_documentation',
           description: 'Get documentation and usage examples for a specific technology, library, or API.',
+          category: 'Technical Reference',
+          keywords: ['docs', 'documentation', 'api', 'reference', 'examples'],
+          use_cases: [
+            'Learning new technologies',
+            'API integration',
+            'Troubleshooting code'
+          ],
           inputSchema: {
             type: 'object',
             properties: {
               query: {
                 type: 'string',
-                description: 'The technology, library, or API to get documentation for'
+                description: 'The technology, library, or API to get documentation for',
+                examples: ['React hooks', 'Python pandas', 'REST API best practices']
               },
               context: {
                 type: 'string',
-                description: 'Additional context or specific aspects to focus on'
+                description: 'Additional context or specific aspects to focus on',
+                examples: ['focus on performance optimization', 'include TypeScript examples']
               }
             },
             required: ['query']
-          }
+          },
+          outputSchema: {
+            type: 'object',
+            properties: {
+              documentation: {
+                type: 'string',
+                description: 'Detailed documentation with examples'
+              },
+              examples: {
+                type: 'array',
+                items: {
+                  type: 'string'
+                },
+                description: 'Code examples'
+              },
+              references: {
+                type: 'array',
+                items: {
+                  type: 'string'
+                },
+                description: 'Links to official documentation'
+              }
+            }
+          },
+          examples: [
+            {
+              description: 'Basic documentation request',
+              input: { 
+                query: 'React useEffect hook'
+              },
+              output: {
+                documentation: 'The useEffect hook lets you perform side effects in function components...',
+                examples: [
+                  'useEffect(() => {\n  // Side effect code\n  return () => {\n    // Cleanup\n  };\n}, [dependency]);'
+                ],
+                references: [
+                  'https://reactjs.org/docs/hooks-effect.html'
+                ]
+              }
+            },
+            {
+              description: 'Context-specific request',
+              input: {
+                query: 'Python list comprehensions',
+                context: 'show advanced nested examples'
+              },
+              output: {
+                documentation: 'List comprehensions provide a concise way to create lists...',
+                examples: [
+                  '# Nested list comprehension\nmatrix = [[1, 2], [3, 4]]\nflattened = [num for row in matrix for num in row]'
+                ],
+                references: [
+                  'https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions'
+                ]
+              }
+            }
+          ],
+          related_tools: ['search', 'check_deprecated_code']
         },
         {
           name: 'find_apis',
           description: 'Find and evaluate APIs that could be integrated into a project.',
+          category: 'API Discovery',
+          keywords: ['api', 'integration', 'services', 'endpoints', 'sdk'],
+          use_cases: [
+            'Finding APIs for specific functionality',
+            'Comparing API alternatives',
+            'Evaluating API suitability'
+          ],
           inputSchema: {
             type: 'object',
             properties: {
               requirement: {
                 type: 'string',
-                description: 'The functionality or requirement you are looking to fulfill'
+                description: 'The functionality or requirement you are looking to fulfill',
+                examples: ['image recognition', 'payment processing', 'geolocation services']
               },
               context: {
                 type: 'string',
-                description: 'Additional context about the project or specific needs'
+                description: 'Additional context about the project or specific needs',
+                examples: ['prefer free tier options', 'must support Python SDK']
               }
             },
             required: ['requirement']
-          }
+          },
+          outputSchema: {
+            type: 'object',
+            properties: {
+              apis: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    description: { type: 'string' },
+                    features: { type: 'array', items: { type: 'string' } },
+                    pricing: { type: 'string' },
+                    documentation: { type: 'string' }
+                  }
+                }
+              },
+              comparison: {
+                type: 'string',
+                description: 'Comparative analysis of the APIs'
+              }
+            }
+          },
+          examples: [
+            {
+              description: 'Finding payment APIs',
+              input: {
+                requirement: 'payment processing',
+                context: 'needs Stripe alternative'
+              },
+              output: {
+                apis: [
+                  {
+                    name: 'PayPal',
+                    description: 'Global payment processing platform',
+                    features: ['Credit cards', 'Bank transfers', 'Recurring payments'],
+                    pricing: '2.9% + $0.30 per transaction',
+                    documentation: 'https://developer.paypal.com'
+                  },
+                  {
+                    name: 'Square',
+                    description: 'Payment solutions for businesses',
+                    features: ['In-person payments', 'Online payments', 'Inventory management'],
+                    pricing: '2.6% + $0.10 per online transaction',
+                    documentation: 'https://developer.squareup.com'
+                  }
+                ],
+                comparison: 'PayPal has broader global support while Square offers more business tools...'
+              }
+            },
+            {
+              description: 'Finding geolocation APIs',
+              input: {
+                requirement: 'geolocation services',
+                context: 'high accuracy required'
+              },
+              output: {
+                apis: [
+                  {
+                    name: 'Google Maps Platform',
+                    description: 'Comprehensive mapping and location services',
+                    features: ['Geocoding', 'Reverse geocoding', 'Places API'],
+                    pricing: 'Pay-as-you-go, $5 per 1000 requests',
+                    documentation: 'https://developers.google.com/maps'
+                  },
+                  {
+                    name: 'Mapbox',
+                    description: 'Custom mapping and location services',
+                    features: ['Directions API', 'Geocoding', 'Static maps'],
+                    pricing: 'Free tier available, then $0.50 per 1000 requests',
+                    documentation: 'https://docs.mapbox.com/api'
+                  }
+                ],
+                comparison: 'Google offers higher accuracy but Mapbox is more cost-effective...'
+              }
+            }
+          ],
+          related_tools: ['get_documentation', 'search']
         },
         {
           name: 'check_deprecated_code',
           description: 'Check if code or dependencies might be using deprecated features.',
+          category: 'Code Analysis',
+          keywords: ['deprecation', 'migration', 'upgrade', 'compatibility', 'linting'],
+          use_cases: [
+            'Preparing for technology upgrades',
+            'Maintaining backward compatibility',
+            'Identifying technical debt'
+          ],
           inputSchema: {
             type: 'object',
             properties: {
               code: {
                 type: 'string',
-                description: 'The code snippet or dependency to check'
+                description: 'The code snippet or dependency to check',
+                examples: ['componentWillMount()', 'var instead of let/const']
               },
               technology: {
                 type: 'string',
-                description: 'The technology or framework context (e.g., "React", "Node.js")'
+                description: 'The technology or framework context (e.g., "React", "Node.js")',
+                examples: ['React 16', 'Python 2.7', 'Node.js 12']
               }
             },
             required: ['code']
-          }
+          },
+          outputSchema: {
+            type: 'object',
+            properties: {
+              deprecated_items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    item: { type: 'string' },
+                    reason: { type: 'string' },
+                    recommended_replacement: { type: 'string' },
+                    severity: { type: 'string', enum: ['low', 'medium', 'high'] }
+                  }
+                }
+              },
+              migration_guide: {
+                type: 'string',
+                description: 'Step-by-step migration instructions'
+              },
+              compatibility_notes: {
+                type: 'string',
+                description: 'Backward compatibility considerations'
+              }
+            }
+          },
+          examples: [
+            {
+              description: 'React lifecycle method deprecation',
+              input: {
+                code: 'componentWillMount() {\n  // initialization code\n}',
+                technology: 'React'
+              },
+              output: {
+                deprecated_items: [
+                  {
+                    item: 'componentWillMount',
+                    reason: 'Legacy lifecycle method, unsafe for async rendering',
+                    recommended_replacement: 'Use constructor or componentDidMount instead',
+                    severity: 'high'
+                  }
+                ],
+                migration_guide: '1. Move initialization code to constructor\n2. For side effects, use componentDidMount\n3. Consider using useEffect for functional components',
+                compatibility_notes: 'This change is required for React 17+ and concurrent mode features'
+              }
+            },
+            {
+              description: 'Python 2 to 3 migration',
+              input: {
+                code: 'print "Hello World"',
+                technology: 'Python'
+              },
+              output: {
+                deprecated_items: [
+                  {
+                    item: 'print statement',
+                    reason: 'Python 2 syntax not supported in Python 3',
+                    recommended_replacement: 'print("Hello World")',
+                    severity: 'high'
+                  }
+                ],
+                migration_guide: '1. Add parentheses around print arguments\n2. Run 2to3 tool for bulk conversion\n3. Test thoroughly for behavioral differences',
+                compatibility_notes: 'Python 2 reached end-of-life in 2020, upgrade is strongly recommended'
+              }
+            }
+          ],
+          related_tools: ['get_documentation', 'search']
         }
       ]
     }));
