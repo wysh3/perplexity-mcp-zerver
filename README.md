@@ -64,8 +64,8 @@ Example for Cline/RooCode Extension:
       ],
       "env": {},
       "disabled": false,
-      "autoApprove": [],
-      "timeout": 300
+      "autoApprove": [], // Recommended: Leave empty or specify tools you trust
+      "timeout": 300 // Optional: Increase timeout if needed (default is often 60s)
     }
   }
 }
@@ -103,5 +103,11 @@ Example for Claude Desktop:
 Thanks DaInfernalCoder:
 - [DaInfernalCoder/perplexity-researcher-mcp](https://github.com/DaInfernalCoder/perplexity-researcher-mcp)
 
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE.md](LICENSE.md) file for details. Portions are derived from MIT-licensed work, as noted in the license file.
+
 ## Disclaimer
+
 This project interacts with the Perplexity website via web automation (Puppeteer). It is intended for educational and research purposes only. Web scraping and automation may be against the terms of service of the target website. The author does not endorse or encourage any unauthorized automation or violation of terms of service. Use responsibly and ethically. The stability of this server depends on the Perplexity website's structure remaining consistent.
