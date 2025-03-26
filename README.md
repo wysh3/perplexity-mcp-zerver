@@ -28,7 +28,7 @@ Asks Perplexity to analyze a code snippet for deprecated features within a speci
 Maintains ongoing conversations with Perplexity AI. Stores chat history locally in `chat_history.db` within the project directory. Returns a *stringified JSON object* containing `chat_id` and `response`.
 
 ## Installation
-> just copy and paste the readme and let the AI take care of the rest
+> just copy <a href="https://raw.githubusercontent.com/wysh3/perplexity-mcp-zerver/main/README.md" title="Copy Full README Content (opens raw file view)">📋</a> and paste the readme and let the AI take care of the rest
 1. Clone or download this repository:
 ```bash
 git clone https://github.com/wysh3/perplexity-mcp-zerver.git
