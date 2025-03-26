@@ -1,16 +1,16 @@
 {
   "name": "perplexity-mcp-server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "MCP server using Puppeteer to interact with Perplexity.ai without an API key.",
+  "main": "build/index.js",
   "scripts": {
     "build": "tsc",
     "start": "node build/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["mcp", "perplexity", "puppeteer", "ai", "research"],
+  "author": "wysh3",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.4.1",
