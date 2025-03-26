@@ -60,7 +60,7 @@ Example for Cline/RooCode Extension:
     "perplexity-server": {
       "command": "node",
       "args": [
-        "/full/path/to/your/perplexity-mcp-zerver/build/index.js" // <-- Replace this path!
+        "/full/path/to/your/perplexity-mcp-zerver/build/index.js" // <-- Replace this path! (in case of windows for ex: "C:\\Users\\$USER\\Documents\\Cline\\MCP\\perplexity-mcp-zerver\\build\\index.js"
       ],
       "env": {},
       "disabled": false,
