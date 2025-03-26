@@ -1,29 +1,31 @@
 # Perplexity MCP Zerver
 
-A research level Model Context Protocol (MCP) server implementation providing AI-powered research capabilities through Perplexity's infrastructure without using any API key.
+A research level Model Context Protocol (MCP) server implementation providing AI-powered research capabilities by interacting with the Perplexity website without requiring an API key.
 
 ## Features
-- 🔍 Web search integration via Perplexity
-- 🔑 Use without any API Key
-- 🛠️ TypeScript-first implementation
-- 📦 Modular tool architecture
+- 🔍 Web search integration via Perplexity's web interface.
+- 💬 Persistent chat history for conversational context.
+- 📄 Tools for documentation retrieval, API finding, and code analysis.
+- 🚫 No API Key required (relies on web interaction).
+- 🛠️ TypeScript-first implementation.
+- 🌐 Uses Puppeteer for browser automation.
 
 ## Tools
 
 ### 1. Search (`search`)
-Perform comprehensive web searches with adjustable detail levels.
+Performs a search query on Perplexity.ai. Supports `brief`, `normal`, or `detailed` responses. Returns raw text output.
 
 ### 2. Get Documentation (`get_documentation`)
-Retrieve up-to-date documentation and code examples with contextual guidance.
+Asks Perplexity to provide documentation and examples for a technology/library, optionally focusing on specific context. Returns raw text output.
 
 ### 3. Find APIs (`find_apis`)
-Discover and evaluate APIs based on technical requirements and compliance needs.
+Asks Perplexity to find and evaluate APIs based on requirements and context. Returns raw text output.
 
 ### 4. Check Deprecated Code (`check_deprecated_code`)
-Analyze code for outdated patterns and provide migration guidance.
+Asks Perplexity to analyze a code snippet for deprecated features within a specific technology context. Returns raw text output.
 
 ### 5. Chat (`chat_perplexity`)
-Maintains ongoing conversations with Perplexity AI using a persistent chat history.
+Maintains ongoing conversations with Perplexity AI. Stores chat history locally in `chat_history.db` within the project directory. Returns a *stringified JSON object* containing `chat_id` and `response`.
 
 ## Installation
 > just copy and paste the readme and let the AI take care of the rest
@@ -43,45 +45,58 @@ npm install
 npm run build
 ```
 
-> **Important**: Please restart your IDE after building the project for changes to take effect.
+> **Important**: Ensure you have Node.js installed. Puppeteer will download a compatible browser version if needed during installation. Restart your IDE/Application after building and configuring the project for changes to take effect.
 
 ## Configuration
 
-Add the server to your MCP configuration:
+Add the server to your MCP configuration file (e.g., `cline_mcp_settings.json` for the VS Code extension or `claude_desktop_config.json` for the desktop app).
 
-For Cline/RooCode Extension:
+**Important:** Replace `/path/to/perplexity-mcp-zerver/build/index.js` with the **absolute path** to the built `index.js` file on your system.
+
+Example for Cline/RooCode Extension:
 ```json
 {
   "mcpServers": {
     "perplexity-server": {
       "command": "node",
       "args": [
-        "/path/to/perplexity-mcp-zerver/build/index.js"
+        "/full/path/to/your/perplexity-mcp-zerver/build/index.js" // <-- Replace this path!
       ],
       "env": {},
       "disabled": false,
-      "alwaysAllow": ["search"],
-      "timeout": 300
+      "autoApprove": [], // Recommended: Leave empty or specify tools you trust
+      "timeout": 300 // Optional: Increase timeout if needed (default is often 60s)
     }
   }
 }
 ```
 
-For Claude Desktop:
+Example for Claude Desktop:
 ```json
 {
   "mcpServers": {
-    "web-search": {
+    "perplexity-server": {
       "command": "node",
-      "args": ["/path/to/perplexity-mcp-zerver/build/index.js"],
-      "env": {}
+      "args": [
+        "/full/path/to/your/perplexity-mcp-zerver/build/index.js" // <-- Replace this path!
+      ],
+      "env": {},
+      "disabled": false,
+      "autoApprove": []
     }
   }
 }
 ```
 
 ## Usage
-Just restart the IDE and ask the llm
+
+1.  Ensure the server is configured correctly in your MCP settings file.
+2.  Restart your IDE (like VS Code with the Cline/RooCode extension) or the Claude Desktop application.
+3.  The MCP client should automatically connect to the server.
+4.  You can now ask the connected AI assistant (like Claude) to use the tools, e.g.:
+    *   "Use perplexity-server search to find the latest news on AI."
+    *   "Ask perplexity-server get_documentation about React hooks."
+    *   "Start a chat with perplexity-server about quantum computing."
 
 ## Credits
 
@@ -89,4 +104,4 @@ Thanks DaInfernalCoder:
 - [DaInfernalCoder/perplexity-researcher-mcp](https://github.com/DaInfernalCoder/perplexity-researcher-mcp)
 
 ## Disclaimer
-This project is intended for educational and research purposes only. The author does not endorse or encourage any unauthorized automation of web services. Use responsibly!
+This project interacts with the Perplexity website via web automation (Puppeteer). It is intended for educational and research purposes only. Web scraping and automation may be against the terms of service of the target website. The author does not endorse or encourage any unauthorized automation or violation of terms of service. Use responsibly and ethically. The stability of this server depends on the Perplexity website's structure remaining consistent.

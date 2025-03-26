@@ -75,7 +75,7 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
-import { homedir } from 'os';
+import { fileURLToPath } from 'url'; // Added for ES Module path resolution
 import crypto from 'crypto';
 
 // ─── INTERFACES ────────────────────────────────────────────────────────
@@ -129,8 +129,9 @@ class PerplexityMCPServer {
       { capabilities: { tools: {} } }
     );
 
-    // Initialize SQLite database (chat history)
-    const dbPath = join(homedir(), '.perplexity-mcp', 'chat_history.db');
+    // Initialize SQLite database (chat history) in the server's directory
+    // Use import.meta.url for path relative to the current module file
+    const dbPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'chat_history.db');
     const dbDir = dirname(dbPath);
     if (!existsSync(dbDir)) {
       mkdirSync(dbDir, { recursive: true });
@@ -1080,7 +1081,7 @@ Please provide:
       tools: [
         {
           name: 'chat_perplexity',
-          description: 'Maintains ongoing conversations with Perplexity AI using a persistent chat history. Starts new chats or continues existing ones with full context.',
+          description: 'Maintains ongoing conversations with Perplexity AI using a persistent chat history. Starts new chats or continues existing ones with full context. Returns a stringified JSON object containing chat_id and response.',
           category: 'Conversation',
           keywords: ['chat', 'conversation', 'dialog', 'discussion'],
           use_cases: [
@@ -1106,10 +1107,11 @@ Please provide:
           },
           outputSchema: {
             type: 'object',
+            description: 'Describes the structure of the JSON object returned within the response text field.',
             properties: {
               chat_id: {
                 type: 'string',
-                description: 'ID of the chat session'
+                description: 'ID of the chat session (new or existing)'
               },
               response: {
                 type: 'string',
@@ -1229,23 +1231,9 @@ Please provide:
           outputSchema: {
             type: 'object',
             properties: {
-              documentation: {
+              response: {
                 type: 'string',
-                description: 'Detailed documentation with examples'
-              },
-              examples: {
-                type: 'array',
-                items: {
-                  type: 'string'
-                },
-                description: 'Code examples'
-              },
-              references: {
-                type: 'array',
-                items: {
-                  type: 'string'
-                },
-                description: 'Links to official documentation'
+                description: 'The raw text response from Perplexity containing documentation and examples.'
               }
             }
           },
@@ -1313,22 +1301,9 @@ Please provide:
           outputSchema: {
             type: 'object',
             properties: {
-              apis: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    name: { type: 'string' },
-                    description: { type: 'string' },
-                    features: { type: 'array', items: { type: 'string' } },
-                    pricing: { type: 'string' },
-                    documentation: { type: 'string' }
-                  }
-                }
-              },
-              comparison: {
+              response: {
                 type: 'string',
-                description: 'Comparative analysis of the APIs'
+                description: 'The raw text response from Perplexity containing API suggestions and evaluations.'
               }
             }
           },
@@ -1417,25 +1392,9 @@ Please provide:
           outputSchema: {
             type: 'object',
             properties: {
-              deprecated_items: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    item: { type: 'string' },
-                    reason: { type: 'string' },
-                    recommended_replacement: { type: 'string' },
-                    severity: { type: 'string', enum: ['low', 'medium', 'high'] }
-                  }
-                }
-              },
-              migration_guide: {
+              response: {
                 type: 'string',
-                description: 'Step-by-step migration instructions'
-              },
-              compatibility_notes: {
-                type: 'string',
-                description: 'Backward compatibility considerations'
+                description: 'The raw text response from Perplexity analyzing the code for deprecated features.'
               }
             }
           },
