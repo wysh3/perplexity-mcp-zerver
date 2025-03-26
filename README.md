@@ -64,8 +64,8 @@ Example for Cline/RooCode Extension:
       ],
       "env": {},
       "disabled": false,
-      "autoApprove": [], // Recommended: Leave empty or specify tools you trust
-      "timeout": 300 // Optional: Increase timeout if needed (default is often 60s)
+      "autoApprove": [],
+      "timeout": 300
     }
   }
 }
