@@ -1028,11 +1028,17 @@ class PerplexityMCPServer {
 
   private async handleCheckDeprecatedCode(args: {code: string, technology?: string}): Promise<string> {
     const { code, technology = '' } = args;
-    const prompt = `Analyze this code for deprecated features or patterns${
-      technology ? ' in ' + technology : ''
-    }:
+    
+    // Break down large code into smaller chunks if needed
+    const codeChunks = this.splitCodeIntoChunks(code, 200);
+    
+    try {
+      // First try with detailed analysis
+      const prompt = `Analyze this code for deprecated features or patterns${
+        technology ? ' in ' + technology : ''
+      }:
 
-${code}
+${codeChunks[0]}
 
 Please provide:
 1. Identification of deprecated features/methods
@@ -1044,7 +1050,42 @@ Please provide:
 7. Performance implications
 8. Backward compatibility considerations
 9. Testing recommendations for the changes`;
-    return await this.performSearch(prompt);
+      
+      const result = await this.performSearch(prompt);
+      return result;
+    } catch (error) {
+      console.warn('Detailed analysis failed, trying simplified version:', error);
+      
+      // Fallback to simpler analysis
+      const simplePrompt = `List deprecated patterns in this code${
+        technology ? ' for ' + technology : ''
+      } and suggest replacements:
+
+${codeChunks[0]}`;
+      
+      return await this.performSearch(simplePrompt);
+    }
+  }
+
+  private splitCodeIntoChunks(code: string, maxLength: number): string[] {
+    if (code.length <= maxLength) return [code];
+    
+    // Try to split at logical points (newlines, semicolons)
+    const chunks: string[] = [];
+    let currentChunk = '';
+    
+    const lines = code.split('\n');
+    for (const line of lines) {
+      if (currentChunk.length + line.length > maxLength) {
+        chunks.push(currentChunk);
+        currentChunk = line + '\n';
+      } else {
+        currentChunk += line + '\n';
+      }
+    }
+    
+    if (currentChunk) chunks.push(currentChunk);
+    return chunks;
   }
 
   private async handleSearch(args: {query: string, detail_level?: 'brief'|'normal'|'detailed'}): Promise<string> {
