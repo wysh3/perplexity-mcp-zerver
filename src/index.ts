@@ -669,61 +669,64 @@ class PerplexityMCPServer {
     const answerPromise = page.evaluate(async () => {
       const getAnswer = () => {
         const elements = Array.from(document.querySelectorAll('.prose'));
-        return elements.map((el) => (el as HTMLElement).innerText.trim()).join('\n\n');
+        const answerText = elements.map((el) => (el as HTMLElement).innerText.trim()).join('\n\n');
+        
+        // Extract all URLs from the answer
+        const links = Array.from(document.querySelectorAll('.prose a[href]'));
+        const urls = links.map(link => (link as HTMLAnchorElement).href)
+          .filter(href => href && !href.startsWith('javascript:') && !href.startsWith('#'))
+          .map(href => href.trim());
+        
+        // Combine text and URLs
+        if (urls.length > 0) {
+          return `${answerText}\n\nURLs:\n${urls.map(url => `- ${url}`).join('\n')}`;
+        }
+        return answerText;
       };
+      
       let lastAnswer = '';
       let lastLength = 0;
       let stabilityCounter = 0;
       let noChangeCounter = 0;
-      const maxAttempts = 60; // Increased from 40 to 60 for longer wait time
-      const checkInterval = 600; // Decreased from 800 to 600 to check more frequently
+      const maxAttempts = 60;
+      const checkInterval = 600;
       
       for (let i = 0; i < maxAttempts; i++) {
         await new Promise((resolve) => setTimeout(resolve, checkInterval));
         const currentAnswer = getAnswer();
         const currentLength = currentAnswer.length;
         
-        // If we have content and it hasn't changed for a while, consider it complete
         if (currentLength > 0) {
           if (currentLength > lastLength) {
-            // Content is still growing
             lastLength = currentLength;
             stabilityCounter = 0;
             noChangeCounter = 0;
           } else if (currentAnswer === lastAnswer) {
-            // Content is stable
             stabilityCounter++;
             noChangeCounter++;
             
-            // Different exit conditions based on content length
             if (currentLength > 1000 && stabilityCounter >= 3) {
-              // For long answers, exit faster
               console.log('Long answer stabilized, exiting early');
               break;
             } else if (currentLength > 500 && stabilityCounter >= 4) {
-              // For medium answers
               console.log('Medium answer stabilized, exiting');
               break;
             } else if (stabilityCounter >= 5) {
-              // For short answers, wait longer
               console.log('Short answer stabilized, exiting');
               break;
             }
           } else {
-            // Content changed but length didn't increase
             noChangeCounter++;
             stabilityCounter = 0;
           }
           lastAnswer = currentAnswer;
           
-          // If content hasn't grown for a long time but has changed
           if (noChangeCounter >= 10 && currentLength > 200) {
             console.log('Content stopped growing but has sufficient information');
             break;
           }
         }
         
-        // Check for completion indicators
         const lastProse = document.querySelector('.prose:last-child');
         const isComplete = lastProse?.textContent?.includes('.') || 
                           lastProse?.textContent?.includes('?') || 
