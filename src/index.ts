@@ -556,12 +556,15 @@ class PerplexityMCPServer {
           }
         }
       } catch (error) {
-        console.warn(`Selector '${selector}' not found or not interactive`);
+        logWarn(`Selector '${selector}' not found or not interactive`);
       }
     }
     // Take a screenshot for debugging if none is found
-    await this.page.screenshot({ path: 'debug_search_not_found.png', fullPage: true });
-    console.error('No working search input found');
+    await this.page.screenshot({
+      path: 'debug_search_not_found.png',
+      fullPage: true,
+    });
+    logError('No working search input found');
     return null;
   }
 
@@ -653,7 +656,13 @@ class PerplexityMCPServer {
   }
 
   private log(level: 'info'|'error'|'warn', message: string) {
-    console[level](message);
+    if (level === 'error') {
+      logError(message);
+    } else if (level === 'warn') {
+      logWarn(message);
+    } else {
+      console[level](message);
+    }
   }
 
   private resetIdleTimeout() {
@@ -675,7 +684,7 @@ class PerplexityMCPServer {
         this.isInitializing = false; // Reset initialization flag
         safeLog('Browser cleanup completed successfully');
       } catch (error) {
-        console.error('Error during browser cleanup:', error);
+        logError('Error during browser cleanup:', error);
         // Reset states even if cleanup fails
         this.page = null;
         this.browser = null;
@@ -702,11 +711,11 @@ class PerplexityMCPServer {
         return result;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        console.error(`Attempt ${i + 1} failed:`, error);
+        logError(`Attempt ${i + 1} failed:`, error);
 
         // Exit early if we've reached the max retries
         if (i === maxRetries - 1) {
-          console.error(`Maximum retry attempts (${maxRetries}) reached. Giving up.`);
+          logError(`Maximum retry attempts (${maxRetries}) reached. Giving up.`);
           break;
         }
 
@@ -719,7 +728,7 @@ class PerplexityMCPServer {
 
         // If CAPTCHA is detected, try to recover immediately
         if (await this.checkForCaptcha()) {
-          console.error('CAPTCHA detected! Initiating recovery...');
+          logError('CAPTCHA detected! Initiating recovery...');
           await this.recoveryProcedure();
           // Add a small delay after recovery
           await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -728,7 +737,7 @@ class PerplexityMCPServer {
 
         // Handle timeout errors with progressive backoff
         if (isTimeoutError) {
-          console.error(`Timeout detected during operation (${++consecutiveTimeouts} consecutive), attempting recovery...`);
+          logError(`Timeout detected during operation (${++consecutiveTimeouts} consecutive), attempting recovery...`);
           await this.recoveryProcedure();
 
           // If we have multiple consecutive timeouts, wait longer between attempts
@@ -740,7 +749,7 @@ class PerplexityMCPServer {
 
         // Handle navigation errors with progressive backoff
         if (isNavigationError) {
-          console.error(`Navigation error detected (${++consecutiveNavigationErrors} consecutive), attempting recovery...`);
+          logError(`Navigation error detected (${++consecutiveNavigationErrors} consecutive), attempting recovery...`);
           await this.recoveryProcedure();
 
           // If we have multiple consecutive navigation errors, wait longer
@@ -752,7 +761,7 @@ class PerplexityMCPServer {
 
         // Handle connection errors
         if (isConnectionError || isProtocolError) {
-          console.error('Connection or protocol error detected, attempting recovery with longer wait...');
+          logError('Connection or protocol error detected, attempting recovery with longer wait...');
           await this.recoveryProcedure();
           // Wait longer for connection issues
           const connectionWaitTime = 15000 + (Math.random() * 10000);
@@ -776,7 +785,7 @@ class PerplexityMCPServer {
           await this.navigateToPerplexity();
           safeLog('Re-navigation successful');
         } catch (navError) {
-          console.error('Navigation failed during retry:', navError);
+          logError('Navigation failed during retry:', navError);
           // If navigation fails, wait a bit longer before next retry
           const navFailWaitTime = 10000 + (Math.random() * 5000);
           safeLog(`Navigation failed, waiting ${Math.round(navFailWaitTime/1000)} seconds before next attempt...`);
@@ -796,7 +805,7 @@ class PerplexityMCPServer {
       `Operation failed after ${maxRetries} retries. Last error: ${lastError.message}` : 
       `Operation failed after ${maxRetries} retries with unknown error`;
 
-    console.error(errorMessage);
+    logError(errorMessage);
     throw new Error(errorMessage);
   }
 
@@ -886,7 +895,7 @@ class PerplexityMCPServer {
       // Race between the answer generation and the timeout
       return await Promise.race([answerPromise, timeoutPromise]);
     } catch (error) {
-      console.error('Error waiting for complete answer:', error);
+      logError('Error waiting for complete answer:', error);
       // Return partial answer if available
       try {
         // Make multiple attempts to get partial content
@@ -904,7 +913,7 @@ class PerplexityMCPServer {
             // Wait briefly before trying again
             await new Promise(resolve => setTimeout(resolve, 1000));
           } catch (evalError) {
-            console.error(`Attempt ${attempt + 1} to get partial answer failed:`, evalError);
+            logError(`Attempt ${attempt + 1} to get partial answer failed:`, evalError);
             // Wait before retrying
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
@@ -912,7 +921,7 @@ class PerplexityMCPServer {
 
         return 'Answer retrieval timed out. The service might be experiencing high load. Please try again with a more specific query.';
       } catch (e) {
-        console.error('Failed to retrieve partial answer:', e);
+        logError('Failed to retrieve partial answer:', e);
         return 'Answer retrieval timed out. Please try again later.';
       }
     }
@@ -921,9 +930,9 @@ class PerplexityMCPServer {
   private async performSearch(query: string): Promise<string> {
     // Set a global timeout for the entire operation with a much longer duration
     const operationTimeout = setTimeout(() => {
-      console.error('Global operation timeout reached, initiating recovery...');
+      logError('Global operation timeout reached, initiating recovery...');
       this.recoveryProcedure().catch(err => {
-        console.error('Recovery after timeout failed:', err);
+        logError('Recovery after timeout failed:', err);
       });
     }, CONFIG.PAGE_TIMEOUT - CONFIG.MCP_TIMEOUT_BUFFER);
 
@@ -951,14 +960,14 @@ class PerplexityMCPServer {
 
         // Validate main frame is attached
         if (!this.page || this.page.mainFrame().isDetached()) {
-          console.error('Main frame is detached, will retry with new browser instance');
+          logError('Main frame is detached, will retry with new browser instance');
           throw new Error('Main frame is detached');
         }
 
         safeLog('Waiting for search input...');
         const selector = await this.waitForSearchInput();
         if (!selector) {
-          console.error('Search input not found, taking screenshot for debugging');
+          logError('Search input not found, taking screenshot for debugging');
           if (this.page) {
             await this.page.screenshot({ path: 'debug_search_input_not_found.png', fullPage: true });
           }
@@ -979,7 +988,7 @@ class PerplexityMCPServer {
           await this.page.click(selector, { clickCount: 3 }); // Triple click to select all text
           await this.page.keyboard.press('Backspace'); // Delete selected text
         } catch (clearError) {
-          console.warn('Error clearing input field:', clearError);
+          logWarn('Error clearing input field:', clearError);
           // Continue anyway, as the typing might still work
         }
 
@@ -1009,12 +1018,12 @@ class PerplexityMCPServer {
             selectorFound = true;
             break;
           } catch (selectorError) {
-            console.warn(`Selector ${proseSelector} not found, trying next...`);
+            logWarn(`Selector ${proseSelector} not found, trying next...`);
           }
         }
 
         if (!selectorFound) {
-          console.error('No response selectors found, checking page state...');
+          logError('No response selectors found, checking page state...');
           // Check if page is still valid before throwing
           if (!this.page || this.page.mainFrame().isDetached()) {
             throw new Error('Page became invalid while waiting for response');
@@ -1039,25 +1048,25 @@ class PerplexityMCPServer {
         return answer;
       }, CONFIG.MAX_RETRIES);
     } catch (error) {
-      console.error('Search operation failed:', error);
+      logError('Search operation failed:', error);
 
       // Handle specific error cases
       if (error instanceof Error) {
         if (error.message.includes('detached') || error.message.includes('Detached')) {
-          console.error('Frame detachment detected, attempting recovery...');
+          logError('Frame detachment detected, attempting recovery...');
           await this.recoveryProcedure();
           // Return a helpful message instead of retrying to avoid potential infinite loops
           return 'The search operation encountered a technical issue. Please try again with a more specific query.';
         }
 
         if (error.message.includes('timeout') || error.message.includes('Timed out')) {
-          console.error('Timeout detected, attempting recovery...');
+          logError('Timeout detected, attempting recovery...');
           await this.recoveryProcedure();
           return 'The search operation is taking longer than expected. This might be due to high server load. Your query has been submitted and we\'re waiting for results. Please try again with a more specific query if needed.';
         }
 
         if (error.message.includes('navigation') || error.message.includes('Navigation')) {
-          console.error('Navigation error detected, attempting recovery...');
+          logError('Navigation error detected, attempting recovery...');
           await this.recoveryProcedure();
           return 'The search operation encountered a navigation issue. This might be due to network connectivity problems. Please try again later.';
         }
@@ -1108,7 +1117,7 @@ class PerplexityMCPServer {
         return document.body.innerText.substring(0, 2000) + '\n\n[Note: Content extraction used fallback method due to page structure changes]';
       });
     } catch (error) {
-      console.error('Error in fallback answer extraction:', error);
+      logError('Error in fallback answer extraction:', error);
       return 'Unable to extract answer content. The website structure may have changed.';
     }
   }
@@ -1197,7 +1206,7 @@ Please provide:
       const result = await this.performSearch(prompt);
       return result;
     } catch (error) {
-      console.warn('Detailed analysis failed, trying simplified version:', error);
+      logWarn('Detailed analysis failed, trying simplified version:', error);
 
       // Fallback to simpler analysis
       const simplePrompt = `List deprecated patterns in this code${
@@ -1624,8 +1633,8 @@ ${codeChunks[0]}`;
     this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       // Set a timeout for the entire MCP request
       const requestTimeout = setTimeout(() => {
-        console.error('MCP request is taking too long, this might lead to a timeout');
-      }, 60000); // 60 seconds warning
+        logError('MCP request is taking too long, this might lead to a timeout');
+      }, CONFIG.PAGE_TIMEOUT - CONFIG.MCP_TIMEOUT_BUFFER);
       
       try {
         const toolName = request.params.name;
@@ -1650,13 +1659,13 @@ ${codeChunks[0]}`;
           content: [{ type: 'text', text: responseContent }]
         };
       } catch (error) {
-        console.error('Error in tool handler:', error);
+        logError('Error in tool handler:', error);
         
         if (error instanceof Error) {
           const errorMsg = error.message;
           
           if (errorMsg.includes('timeout') || errorMsg.includes('Timed out')) {
-            console.error('Timeout detected in MCP request');
+            logError('Timeout detected in MCP request');
             return {
               content: [{ 
                 type: 'text', 
