@@ -78,6 +78,148 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url'; // Added for ES Module path resolution
 import crypto from 'crypto';
 
+// ─── LOGGING FUNCTIONS ─────────────────────────────────────────────────
+/**
+ * Safe logging function to handle all types of inputs and prevent JSON parsing errors
+ * @param message Primary message or object to log
+ * @param data Optional additional data to include in the log
+ */
+function safeLog(message: unknown, data?: unknown): void {
+  let formattedMessage = '[LOG:INFO] ';
+  
+  // Format the primary message
+  if (message instanceof Error) {
+    formattedMessage += `${message.name}: ${message.message}`;
+    if (message.stack) {
+      formattedMessage += `\n${message.stack}`;
+    }
+  } else if (typeof message === 'object' && message !== null) {
+    try {
+      formattedMessage += JSON.stringify(message);
+    } catch (e) {
+      formattedMessage += `[Unstringifiable Object: ${Object.prototype.toString.call(message)}]`;
+    }
+  } else {
+    formattedMessage += String(message);
+  }
+  
+  // Add additional data if provided
+  if (data !== undefined) {
+    formattedMessage += ' ';
+    if (data instanceof Error) {
+      formattedMessage += `${data.name}: ${data.message}`;
+      if (data.stack) {
+        formattedMessage += `\n${data.stack}`;
+      }
+    } else if (typeof data === 'object' && data !== null) {
+      try {
+        formattedMessage += JSON.stringify(data);
+      } catch (e) {
+        formattedMessage += `[Unstringifiable Object: ${Object.prototype.toString.call(data)}]`;
+      }
+    } else {
+      formattedMessage += String(data);
+    }
+  }
+  
+  // Use console.error to prevent JSON communication issues
+  console.error(formattedMessage);
+}
+
+/**
+ * Safe error logging function with error prefix
+ * @param message Primary message or object to log
+ * @param data Optional additional data to include in the log
+ */
+function logError(message: unknown, data?: unknown): void {
+  let formattedMessage = '[LOG:ERROR] ';
+  
+  // Format the primary message
+  if (message instanceof Error) {
+    formattedMessage += `${message.name}: ${message.message}`;
+    if (message.stack) {
+      formattedMessage += `\n${message.stack}`;
+    }
+  } else if (typeof message === 'object' && message !== null) {
+    try {
+      formattedMessage += JSON.stringify(message);
+    } catch (e) {
+      formattedMessage += `[Unstringifiable Object: ${Object.prototype.toString.call(message)}]`;
+    }
+  } else {
+    formattedMessage += String(message);
+  }
+  
+  // Add additional data if provided
+  if (data !== undefined) {
+    formattedMessage += ' ';
+    if (data instanceof Error) {
+      formattedMessage += `${data.name}: ${data.message}`;
+      if (data.stack) {
+        formattedMessage += `\n${data.stack}`;
+      }
+    } else if (typeof data === 'object' && data !== null) {
+      try {
+        formattedMessage += JSON.stringify(data);
+      } catch (e) {
+        formattedMessage += `[Unstringifiable Object: ${Object.prototype.toString.call(data)}]`;
+      }
+    } else {
+      formattedMessage += String(data);
+    }
+  }
+  
+  // Use console.error to prevent JSON communication issues
+  console.error(formattedMessage);
+}
+
+/**
+ * Safe warning logging function with warning prefix
+ * @param message Primary message or object to log
+ * @param data Optional additional data to include in the log
+ */
+function logWarn(message: unknown, data?: unknown): void {
+  let formattedMessage = '[LOG:WARN] ';
+  
+  // Format the primary message
+  if (message instanceof Error) {
+    formattedMessage += `${message.name}: ${message.message}`;
+    if (message.stack) {
+      formattedMessage += `\n${message.stack}`;
+    }
+  } else if (typeof message === 'object' && message !== null) {
+    try {
+      formattedMessage += JSON.stringify(message);
+    } catch (e) {
+      formattedMessage += `[Unstringifiable Object: ${Object.prototype.toString.call(message)}]`;
+    }
+  } else {
+    formattedMessage += String(message);
+  }
+  
+  // Add additional data if provided
+  if (data !== undefined) {
+    formattedMessage += ' ';
+    if (data instanceof Error) {
+      formattedMessage += `${data.name}: ${data.message}`;
+      if (data.stack) {
+        formattedMessage += `\n${data.stack}`;
+      }
+    } else if (typeof data === 'object' && data !== null) {
+      try {
+        formattedMessage += JSON.stringify(data);
+      } catch (e) {
+        formattedMessage += `[Unstringifiable Object: ${Object.prototype.toString.call(data)}]`;
+      }
+    } else {
+      formattedMessage += String(data);
+    }
+  }
+  
+  // Use console.error to prevent JSON communication issues
+  console.error(formattedMessage);
+}
+
 // ─── INTERFACES ────────────────────────────────────────────────────────
 interface ChatMessage {
   role: "user" | "assistant";
@@ -199,7 +341,7 @@ class PerplexityMCPServer {
 
   private async initializeBrowser() {
     if (this.isInitializing) {
-      console.log('Browser initialization already in progress...');
+      safeLog('Browser initialization already in progress...');
       return;
     }
     this.isInitializing = true;
@@ -228,7 +370,7 @@ class PerplexityMCPServer {
       this.page.setDefaultNavigationTimeout(CONFIG.PAGE_TIMEOUT);
       await this.navigateToPerplexity();
     } catch (error) {
-      console.error('Browser initialization failed:', error);
+      logError('Browser initialization failed:', error);
       throw error;
     } finally {
       this.isInitializing = false;
@@ -238,7 +380,7 @@ class PerplexityMCPServer {
   private async navigateToPerplexity() {
     if (!this.page) throw new Error('Page not initialized');
     try {
-      console.log('Navigating to Perplexity.ai...');
+      safeLog('Navigating to Perplexity.ai...');
       
       // Try multiple waitUntil strategies in case one fails
       const waitUntilOptions = ['networkidle2', 'domcontentloaded', 'load'] as const;
@@ -248,18 +390,18 @@ class PerplexityMCPServer {
         if (navigationSuccessful) break;
         
         try {
-          console.log(`Attempting navigation with waitUntil: ${waitUntil}`);
+          safeLog(`Attempting navigation with waitUntil: ${waitUntil}`);
           await this.page.goto('https://www.perplexity.ai/', {
             waitUntil,
             timeout: CONFIG.PAGE_TIMEOUT
           });
           navigationSuccessful = true;
-          console.log(`Navigation successful with waitUntil: ${waitUntil}`);
+          safeLog(`Navigation successful with waitUntil: ${waitUntil}`);
         } catch (navError) {
-          console.warn(`Navigation with waitUntil: ${waitUntil} failed:`, navError);
+          logWarn(`Navigation with waitUntil: ${waitUntil} failed:`, navError);
           // If this is the last option, we'll let the error propagate to the outer catch
           if (waitUntil !== waitUntilOptions[waitUntilOptions.length - 1]) {
-            console.log('Trying next navigation strategy...');
+            safeLog('Trying next navigation strategy...');
           }
         }
       }
@@ -269,47 +411,47 @@ class PerplexityMCPServer {
       }
       
       // Allow extra time for the page to settle and JavaScript to initialize
-      console.log('Waiting for page to settle...');
+      safeLog('Waiting for page to settle...');
       await new Promise((resolve) => setTimeout(resolve, 7000)); // Increased from 5000 to 7000
       
       // Check if page loaded correctly
       const pageTitle = await this.page.title().catch(() => '');
       const pageUrl = this.page.url();
-      console.log(`Page loaded: ${pageUrl} (${pageTitle})`);
+      safeLog(`Page loaded: ${pageUrl} (${pageTitle})`);
       
       // Verify we're on the correct domain
       if (!pageUrl.includes('perplexity.ai')) {
-        console.error(`Unexpected URL: ${pageUrl}`);
+        logError(`Unexpected URL: ${pageUrl}`);
         throw new Error(`Navigation redirected to unexpected URL: ${pageUrl}`);
       }
       
-      console.log('Waiting for search input...');
+      safeLog('Waiting for search input...');
       const searchInput = await this.waitForSearchInput();
       if (!searchInput) {
-        console.error('Search input not found, taking screenshot for debugging');
+        logError('Search input not found, taking screenshot for debugging');
         await this.page.screenshot({ path: 'debug_no_search_input.png', fullPage: true });
         throw new Error('Search input not found after navigation');
       }
       
-      console.log('Navigation to Perplexity.ai completed successfully');
+      safeLog('Navigation to Perplexity.ai completed successfully');
     } catch (error) {
-      console.error('Navigation failed:', error);
+      logError('Navigation failed:', error);
       
       // Try to take a screenshot of the failed state if possible
       try {
         if (this.page) {
           await this.page.screenshot({ path: 'debug_navigation_failed.png', fullPage: true });
-          console.log('Captured screenshot of failed navigation state');
+          safeLog('Captured screenshot of failed navigation state');
         }
       } catch (screenshotError) {
-        console.error('Failed to capture screenshot:', screenshotError);
+        logError('Failed to capture screenshot:', screenshotError);
       }
       
       throw error;
     }
   }
 
-  private async setupBrowserEvasion() {
+ private async setupBrowserEvasion() {
     if (!this.page) return;
     await this.page.evaluateOnNewDocument(() => {
       // Overwrite navigator properties to help avoid detection
@@ -408,7 +550,7 @@ class PerplexityMCPServer {
             return el && !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true';
           }, selector);
           if (isInteractive) {
-            console.log(`Found working search input: ${selector}`);
+            safeLog(`Found working search input: ${selector}`);
             this.searchInputSelector = selector;
             return selector;
           }
@@ -441,7 +583,7 @@ class PerplexityMCPServer {
 
   private determineRecoveryLevel(error?: Error): number {
     if (!error) return 3; // Default to full restart if no error info
-    
+
     const errorMsg = error.message.toLowerCase();
     if (errorMsg.includes('frame') || errorMsg.includes('detached')) {
       return 2; // New page for frame issues
@@ -455,7 +597,7 @@ class PerplexityMCPServer {
   private async recoveryProcedure(error?: Error) {
     const recoveryLevel = this.determineRecoveryLevel(error);
     const opId = ++this.operationCount;
-    
+
     this.log('info', 'Starting recovery procedure');
 
     try {
@@ -466,7 +608,7 @@ class PerplexityMCPServer {
             await this.page.reload({timeout: CONFIG.TIMEOUT_PROFILES.navigation});
           }
           break;
-          
+
         case 2: // New page
           this.log('info', 'Creating new page instance');
           if (this.page) {
@@ -479,7 +621,7 @@ class PerplexityMCPServer {
             await this.page.setUserAgent(CONFIG.USER_AGENT);
           }
           break;
-          
+
         case 3: // Full restart
         default:
           this.log('info', 'Performing full browser restart');
@@ -495,11 +637,11 @@ class PerplexityMCPServer {
           await this.initializeBrowser();
           break;
       }
-      
+
       this.log('info', 'Recovery completed');
     } catch (recoveryError) {
       this.log('error', 'Recovery failed: ' + (recoveryError instanceof Error ? recoveryError.message : String(recoveryError)));
-      
+
       // Fall back to more aggressive recovery if initial attempt fails
       if (recoveryLevel < 3) {
         this.log('info', 'Attempting higher level recovery');
@@ -520,7 +662,7 @@ class PerplexityMCPServer {
     }
 
     this.idleTimeout = setTimeout(async () => {
-      console.log('Browser idle timeout reached, closing browser...');
+      safeLog('Browser idle timeout reached, closing browser...');
       try {
         if (this.page) {
           await this.page.close();
@@ -531,7 +673,7 @@ class PerplexityMCPServer {
           this.browser = null;
         }
         this.isInitializing = false; // Reset initialization flag
-        console.log('Browser cleanup completed successfully');
+        safeLog('Browser cleanup completed successfully');
       } catch (error) {
         console.error('Error during browser cleanup:', error);
         // Reset states even if cleanup fails
@@ -549,10 +691,10 @@ class PerplexityMCPServer {
     let lastError: Error | null = null;
     let consecutiveTimeouts = 0;
     let consecutiveNavigationErrors = 0;
-    
+
     for (let i = 0; i < maxRetries; i++) {
       try {
-        console.log(`Attempt ${i + 1}/${maxRetries}...`);
+        safeLog(`Attempt ${i + 1}/${maxRetries}...`);
         const result = await operation();
         // Reset counters on success
         consecutiveTimeouts = 0;
@@ -561,20 +703,20 @@ class PerplexityMCPServer {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         console.error(`Attempt ${i + 1} failed:`, error);
-        
+
         // Exit early if we've reached the max retries
         if (i === maxRetries - 1) {
           console.error(`Maximum retry attempts (${maxRetries}) reached. Giving up.`);
           break;
         }
-        
+
         // Check for specific error conditions
         const errorMsg = error instanceof Error ? error.message : String(error);
         const isTimeoutError = errorMsg.includes('timeout') || errorMsg.includes('Timed out');
         const isNavigationError = errorMsg.includes('navigation') || errorMsg.includes('Navigation');
         const isConnectionError = errorMsg.includes('net::') || errorMsg.includes('connection') || errorMsg.includes('network');
         const isProtocolError = errorMsg.includes('Protocol error');
-        
+
         // If CAPTCHA is detected, try to recover immediately
         if (await this.checkForCaptcha()) {
           console.error('CAPTCHA detected! Initiating recovery...');
@@ -583,77 +725,77 @@ class PerplexityMCPServer {
           await new Promise((resolve) => setTimeout(resolve, 3000));
           continue;
         }
-        
+
         // Handle timeout errors with progressive backoff
         if (isTimeoutError) {
           console.error(`Timeout detected during operation (${++consecutiveTimeouts} consecutive), attempting recovery...`);
           await this.recoveryProcedure();
-          
+
           // If we have multiple consecutive timeouts, wait longer between attempts
           const timeoutWaitTime = Math.min(5000 * consecutiveTimeouts, 30000);
-          console.log(`Waiting ${timeoutWaitTime/1000} seconds after timeout...`);
+          safeLog(`Waiting ${timeoutWaitTime/1000} seconds after timeout...`);
           await new Promise((resolve) => setTimeout(resolve, timeoutWaitTime));
           continue;
         }
-        
+
         // Handle navigation errors with progressive backoff
         if (isNavigationError) {
           console.error(`Navigation error detected (${++consecutiveNavigationErrors} consecutive), attempting recovery...`);
           await this.recoveryProcedure();
-          
+
           // If we have multiple consecutive navigation errors, wait longer
           const navWaitTime = Math.min(8000 * consecutiveNavigationErrors, 40000);
-          console.log(`Waiting ${navWaitTime/1000} seconds after navigation error...`);
+          safeLog(`Waiting ${navWaitTime/1000} seconds after navigation error...`);
           await new Promise((resolve) => setTimeout(resolve, navWaitTime));
           continue;
         }
-        
+
         // Handle connection errors
         if (isConnectionError || isProtocolError) {
           console.error('Connection or protocol error detected, attempting recovery with longer wait...');
           await this.recoveryProcedure();
           // Wait longer for connection issues
           const connectionWaitTime = 15000 + (Math.random() * 10000);
-          console.log(`Waiting ${Math.round(connectionWaitTime/1000)} seconds after connection error...`);
+          safeLog(`Waiting ${Math.round(connectionWaitTime/1000)} seconds after connection error...`);
           await new Promise((resolve) => setTimeout(resolve, connectionWaitTime));
           continue;
         }
-        
+
         // Exponential backoff delay with progressive jitter to avoid thundering herd
         // More retries = more jitter to spread out retry attempts
         const baseDelay = Math.min(1000 * Math.pow(2, i), 30000);
         const maxJitter = Math.min(1000 * (i + 1), 10000); // Jitter increases with retry count
         const jitter = Math.random() * maxJitter;
         const delay = baseDelay + jitter;
-        console.log(`Retrying in ${Math.round(delay/1000)} seconds (base: ${Math.round(baseDelay/1000)}s, jitter: ${Math.round(jitter/1000)}s)...`);
+        safeLog(`Retrying in ${Math.round(delay/1000)} seconds (base: ${Math.round(baseDelay/1000)}s, jitter: ${Math.round(jitter/1000)}s)...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
-        
+
         // Try re-navigating with error handling
         try {
-          console.log('Attempting to re-navigate to Perplexity...');
+          safeLog('Attempting to re-navigate to Perplexity...');
           await this.navigateToPerplexity();
-          console.log('Re-navigation successful');
+          safeLog('Re-navigation successful');
         } catch (navError) {
           console.error('Navigation failed during retry:', navError);
           // If navigation fails, wait a bit longer before next retry
           const navFailWaitTime = 10000 + (Math.random() * 5000);
-          console.log(`Navigation failed, waiting ${Math.round(navFailWaitTime/1000)} seconds before next attempt...`);
+          safeLog(`Navigation failed, waiting ${Math.round(navFailWaitTime/1000)} seconds before next attempt...`);
           await new Promise((resolve) => setTimeout(resolve, navFailWaitTime));
-          
+
           // If this is a later retry attempt and navigation keeps failing, try a full recovery
           if (i > 1) {
-            console.log('Multiple navigation failures, attempting full recovery...');
+            safeLog('Multiple navigation failures, attempting full recovery...');
             await this.recoveryProcedure();
           }
         }
       }
     }
-    
+
     // If we've exhausted all retries, provide a detailed error message
     const errorMessage = lastError ? 
       `Operation failed after ${maxRetries} retries. Last error: ${lastError.message}` : 
       `Operation failed after ${maxRetries} retries with unknown error`;
-    
+
     console.error(errorMessage);
     throw new Error(errorMessage);
   }
@@ -670,32 +812,32 @@ class PerplexityMCPServer {
       const getAnswer = () => {
         const elements = Array.from(document.querySelectorAll('.prose'));
         const answerText = elements.map((el) => (el as HTMLElement).innerText.trim()).join('\n\n');
-        
+
         // Extract all URLs from the answer
         const links = Array.from(document.querySelectorAll('.prose a[href]'));
         const urls = links.map(link => (link as HTMLAnchorElement).href)
           .filter(href => href && !href.startsWith('javascript:') && !href.startsWith('#'))
           .map(href => href.trim());
-        
+
         // Combine text and URLs
         if (urls.length > 0) {
           return `${answerText}\n\nURLs:\n${urls.map(url => `- ${url}`).join('\n')}`;
         }
         return answerText;
       };
-      
+
       let lastAnswer = '';
       let lastLength = 0;
       let stabilityCounter = 0;
       let noChangeCounter = 0;
       const maxAttempts = 60;
       const checkInterval = 600;
-      
+
       for (let i = 0; i < maxAttempts; i++) {
         await new Promise((resolve) => setTimeout(resolve, checkInterval));
         const currentAnswer = getAnswer();
         const currentLength = currentAnswer.length;
-        
+
         if (currentLength > 0) {
           if (currentLength > lastLength) {
             lastLength = currentLength;
@@ -704,15 +846,15 @@ class PerplexityMCPServer {
           } else if (currentAnswer === lastAnswer) {
             stabilityCounter++;
             noChangeCounter++;
-            
+
             if (currentLength > 1000 && stabilityCounter >= 3) {
-              console.log('Long answer stabilized, exiting early');
+              safeLog('Long answer stabilized, exiting early');
               break;
             } else if (currentLength > 500 && stabilityCounter >= 4) {
-              console.log('Medium answer stabilized, exiting');
+              safeLog('Medium answer stabilized, exiting');
               break;
             } else if (stabilityCounter >= 5) {
-              console.log('Short answer stabilized, exiting');
+              safeLog('Short answer stabilized, exiting');
               break;
             }
           } else {
@@ -720,20 +862,20 @@ class PerplexityMCPServer {
             stabilityCounter = 0;
           }
           lastAnswer = currentAnswer;
-          
+
           if (noChangeCounter >= 10 && currentLength > 200) {
-            console.log('Content stopped growing but has sufficient information');
+            safeLog('Content stopped growing but has sufficient information');
             break;
           }
         }
-        
+
         const lastProse = document.querySelector('.prose:last-child');
         const isComplete = lastProse?.textContent?.includes('.') || 
                           lastProse?.textContent?.includes('?') || 
                           lastProse?.textContent?.includes('!');
-                          
+
         if (isComplete && stabilityCounter >= 2 && currentLength > 100) {
-          console.log('Completion indicators found, exiting');
+          safeLog('Completion indicators found, exiting');
           break;
         }
       }
@@ -754,11 +896,11 @@ class PerplexityMCPServer {
               const elements = Array.from(document.querySelectorAll('.prose'));
               return elements.map((el) => (el as HTMLElement).innerText.trim()).join('\n\n');
             });
-            
+
             if (partialAnswer && partialAnswer.length > 50) {
               return partialAnswer + '\n\n[Note: Answer retrieval was interrupted. This is a partial response.]';
             }
-            
+
             // Wait briefly before trying again
             await new Promise(resolve => setTimeout(resolve, 1000));
           } catch (evalError) {
@@ -767,7 +909,7 @@ class PerplexityMCPServer {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
-        
+
         return 'Answer retrieval timed out. The service might be experiencing high load. Please try again with a more specific query.';
       } catch (e) {
         console.error('Failed to retrieve partial answer:', e);
@@ -788,7 +930,7 @@ class PerplexityMCPServer {
     try {
       // If browser/page is not initialized or page is closed, initialize it
       if (!this.browser || !this.page || (this.page && this.page.isClosed())) {
-        console.log('Browser/page not initialized or page closed, initializing now...');
+        safeLog('Browser/page not initialized or page closed, initializing now...');
         if (this.page && !this.page.isClosed()) {
           await this.page.close();
         }
@@ -801,10 +943,10 @@ class PerplexityMCPServer {
 
       // Reset idle timeout
       this.resetIdleTimeout();
-      
+
       // Use retry operation for the entire search process with increased retries
       return await this.retryOperation(async () => {
-        console.log(`Navigating to Perplexity for query: "${query.substring(0, 30)}${query.length > 30 ? '...' : ''}"`);
+        safeLog(`Navigating to Perplexity for query: "${query.substring(0, 30)}${query.length > 30 ? '...' : ''}"`);
         await this.navigateToPerplexity();
 
         // Validate main frame is attached
@@ -812,8 +954,8 @@ class PerplexityMCPServer {
           console.error('Main frame is detached, will retry with new browser instance');
           throw new Error('Main frame is detached');
         }
-        
-        console.log('Waiting for search input...');
+
+        safeLog('Waiting for search input...');
         const selector = await this.waitForSearchInput();
         if (!selector) {
           console.error('Search input not found, taking screenshot for debugging');
@@ -823,8 +965,8 @@ class PerplexityMCPServer {
           throw new Error('Search input not found');
         }
 
-        console.log(`Found search input with selector: ${selector}`);
-        
+        safeLog(`Found search input with selector: ${selector}`);
+
         // Clear any existing text with multiple approaches for reliability
         try {
           // First approach: using evaluate
@@ -832,7 +974,7 @@ class PerplexityMCPServer {
             const input = document.querySelector(sel) as HTMLTextAreaElement;
             if (input) input.value = '';
           }, selector);
-          
+
           // Second approach: using keyboard shortcuts
           await this.page.click(selector, { clickCount: 3 }); // Triple click to select all text
           await this.page.keyboard.press('Backspace'); // Delete selected text
@@ -842,20 +984,20 @@ class PerplexityMCPServer {
         }
 
         // Type the query with variable delay to appear more human-like
-        console.log('Typing search query...');
+        safeLog('Typing search query...');
         const typeDelay = Math.floor(Math.random() * 20) + 20; // Random delay between 20-40ms
         await this.page.type(selector, query, { delay: typeDelay });
         await this.page.keyboard.press('Enter');
 
         // Wait for response with multiple selector options and extended timeout
-        console.log('Waiting for response...');
+        safeLog('Waiting for response...');
         const proseSelectors = [
           '.prose', 
           '[class*="prose"]',
           '[class*="answer"]',
           '[class*="result"]'
         ];
-        
+
         let selectorFound = false;
         for (const proseSelector of proseSelectors) {
           try {
@@ -863,14 +1005,14 @@ class PerplexityMCPServer {
               timeout: CONFIG.SELECTOR_TIMEOUT,
               visible: true
             });
-            console.log(`Found response with selector: ${proseSelector}`);
+            safeLog(`Found response with selector: ${proseSelector}`);
             selectorFound = true;
             break;
           } catch (selectorError) {
             console.warn(`Selector ${proseSelector} not found, trying next...`);
           }
         }
-        
+
         if (!selectorFound) {
           console.error('No response selectors found, checking page state...');
           // Check if page is still valid before throwing
@@ -879,26 +1021,26 @@ class PerplexityMCPServer {
           }
           // Take a screenshot for debugging
           await this.page.screenshot({ path: 'debug_prose_not_found.png', fullPage: true });
-          
+
           // Check if there's any visible text content that might contain an answer
           const pageText = await this.page.evaluate(() => document.body.innerText);
           if (pageText && pageText.length > 200) {
-            console.log('Found text content on page, attempting to extract answer...');
+            safeLog('Found text content on page, attempting to extract answer...');
             // Try to extract meaningful content
             return await this.extractFallbackAnswer(this.page);
           }
-          
+
           throw new Error('Timed out waiting for response from Perplexity');
         }
 
-        console.log('Waiting for complete answer...');
+        safeLog('Waiting for complete answer...');
         const answer = await this.waitForCompleteAnswer(this.page);
-        console.log(`Answer received (${answer.length} characters)`);
+        safeLog(`Answer received (${answer.length} characters)`);
         return answer;
       }, CONFIG.MAX_RETRIES);
     } catch (error) {
       console.error('Search operation failed:', error);
-      
+
       // Handle specific error cases
       if (error instanceof Error) {
         if (error.message.includes('detached') || error.message.includes('Detached')) {
@@ -907,27 +1049,27 @@ class PerplexityMCPServer {
           // Return a helpful message instead of retrying to avoid potential infinite loops
           return 'The search operation encountered a technical issue. Please try again with a more specific query.';
         }
-        
+
         if (error.message.includes('timeout') || error.message.includes('Timed out')) {
           console.error('Timeout detected, attempting recovery...');
           await this.recoveryProcedure();
           return 'The search operation is taking longer than expected. This might be due to high server load. Your query has been submitted and we\'re waiting for results. Please try again with a more specific query if needed.';
         }
-        
+
         if (error.message.includes('navigation') || error.message.includes('Navigation')) {
           console.error('Navigation error detected, attempting recovery...');
           await this.recoveryProcedure();
           return 'The search operation encountered a navigation issue. This might be due to network connectivity problems. Please try again later.';
         }
       }
-      
+
       // For any other errors, return a user-friendly message
       return `The search operation could not be completed. Error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again later with a more specific query.`;
     } finally {
       clearTimeout(operationTimeout);
     }
   }
-  
+
   // Helper method to extract answer when normal selectors fail
   private async extractFallbackAnswer(page: Page): Promise<string> {
     try {
@@ -941,7 +1083,7 @@ class PerplexityMCPServer {
           // Any large text block
           'div:not(:empty)'
         ];
-        
+
         for (const selector of contentSelectors) {
           const elements = Array.from(document.querySelectorAll(selector));
           // Filter to elements with substantial text
@@ -949,19 +1091,19 @@ class PerplexityMCPServer {
             const text = (el as HTMLElement).innerText.trim();
             return text.length > 100; // Only consider elements with substantial text
           });
-          
+
           if (textElements.length > 0) {
             // Sort by text length to find the most substantial content
             textElements.sort((a, b) => {
               return (b as HTMLElement).innerText.length - (a as HTMLElement).innerText.length;
             });
-            
+
             // Get the top 3 elements with the most text
             const topElements = textElements.slice(0, 3);
             return topElements.map(el => (el as HTMLElement).innerText.trim()).join('\n\n');
           }
         }
-        
+
         // Last resort: get any visible text
         return document.body.innerText.substring(0, 2000) + '\n\n[Note: Content extraction used fallback method due to page structure changes]';
       });
@@ -980,7 +1122,7 @@ class PerplexityMCPServer {
     const history = this.getChatHistory(chat_id);
     const userMessage: ChatMessage = { role: 'user', content: message };
     this.saveChatMessage(chat_id, userMessage);
-    
+
     let conversationPrompt = '';
     history.forEach((msg) => {
       conversationPrompt += msg.role === 'user' 
@@ -988,7 +1130,7 @@ class PerplexityMCPServer {
         : `Assistant: ${msg.content}\n`;
     });
     conversationPrompt += `User: ${message}\n`;
-    
+
     return await this.performSearch(conversationPrompt);
   }
 
@@ -1031,18 +1173,16 @@ class PerplexityMCPServer {
 
   private async handleCheckDeprecatedCode(args: {code: string, technology?: string}): Promise<string> {
     const { code, technology = '' } = args;
-    
+
     // Break down large code into smaller chunks if needed
     const codeChunks = this.splitCodeIntoChunks(code, 200);
-    
+
     try {
       // First try with detailed analysis
       const prompt = `Analyze this code for deprecated features or patterns${
         technology ? ' in ' + technology : ''
       }:
-
 ${codeChunks[0]}
-
 Please provide:
 1. Identification of deprecated features/methods
 2. Current recommended alternatives  
@@ -1053,12 +1193,12 @@ Please provide:
 7. Performance implications
 8. Backward compatibility considerations
 9. Testing recommendations for the changes`;
-      
+
       const result = await this.performSearch(prompt);
       return result;
     } catch (error) {
       console.warn('Detailed analysis failed, trying simplified version:', error);
-      
+
       // Fallback to simpler analysis
       const simplePrompt = `List deprecated patterns in this code${
         technology ? ' for ' + technology : ''
@@ -1069,7 +1209,6 @@ ${codeChunks[0]}`;
       return await this.performSearch(simplePrompt);
     }
   }
-
   private splitCodeIntoChunks(code: string, maxLength: number): string[] {
     if (code.length <= maxLength) return [code];
     
@@ -1090,7 +1229,6 @@ ${codeChunks[0]}`;
     if (currentChunk) chunks.push(currentChunk);
     return chunks;
   }
-
   private async handleSearch(args: {query: string, detail_level?: 'brief'|'normal'|'detailed'}): Promise<string> {
     const { query, detail_level = 'normal' } = args;
     let prompt = query;
@@ -1106,9 +1244,7 @@ ${codeChunks[0]}`;
     }
     return await this.performSearch(prompt);
   }
-
   // ─── TOOL HANDLER SETUP ──────────────────────────────────────────────
-
   // ─── TOOL HANDLER TYPES ──────────────────────────────────────────────
   private toolHandlers: {
     [key: string]: (args: any) => Promise<string>;
@@ -1119,7 +1255,6 @@ ${codeChunks[0]}`;
     check_deprecated_code: this.handleCheckDeprecatedCode.bind(this),
     search: this.handleSearch.bind(this)
   };
-
   private setupToolHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
@@ -1486,7 +1621,6 @@ ${codeChunks[0]}`;
         }
       ]
     }));
-
     this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       // Set a timeout for the entire MCP request
       const requestTimeout = setTimeout(() => {
@@ -1500,7 +1634,6 @@ ${codeChunks[0]}`;
         if (!handler) {
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${toolName}`);
         }
-
         const responseContent = await handler(request.params.arguments);
         
         // Special case for chat to return chat_id
@@ -1513,7 +1646,6 @@ ${codeChunks[0]}`;
             }]
           };
         }
-
         return {
           content: [{ type: 'text', text: responseContent }]
         };
@@ -1540,7 +1672,7 @@ ${codeChunks[0]}`;
             }]
           };
         }
-        
+
         throw new McpError(ErrorCode.InternalError, 'An unexpected error occurred');
       } finally {
         clearTimeout(requestTimeout);
@@ -1555,13 +1687,13 @@ ${codeChunks[0]}`;
       await this.initializeBrowser();
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      console.error('Perplexity MCP server running');
+      safeLog('Perplexity MCP server running');
     } catch (error) {
-      console.error('Failed to start server:', error);
+      logError('Failed to start server:', error);
       process.exit(1);
     }
   }
 }
 
 const server = new PerplexityMCPServer();
-server.run().catch(console.error);
+server.run().catch((error) => logError('Server run error:', error));
