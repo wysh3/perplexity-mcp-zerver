@@ -77,154 +77,6 @@ import { existsSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url'; // Added for ES Module path resolution
 import crypto from 'crypto';
-import { performance } from 'perf_hooks'; // Added for performance monitoring
-
-// ─── LOGGING & PERFORMANCE FUNCTIONS (Integrated from PR) ───────────────────
-/**
- * Log levels used by the application
- */
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-
-/**
- * Performance tracking metrics
- */
-const performanceMarkers: Record<string, number> = {};
-
-/**
- * Format a timestamp for logging
- * @returns Formatted timestamp [YYYY-MM-DD HH:MM:SS.mmm]
- */
-function getTimestamp(): string {
-  const now = new Date();
-  return `[${now.toISOString().replace('T', ' ').replace('Z', '').substring(0, 23)}]`;
-}
-
-/**
- * Safe logging function to handle all types of inputs and prevent JSON parsing errors
- * @param level Log level (debug, info, warn, error)
- * @param message Primary message or object to log
- * @param data Optional additional data to include in the log
- */
-function logMessage(level: LogLevel, message: unknown, data?: unknown): void {
-  let logPrefix = '';
-
-  switch(level) {
-    case 'debug': logPrefix = '[DEBUG]'; break;
-    case 'info': logPrefix = '[INFO] '; break;
-    case 'warn': logPrefix = '[WARN] '; break;
-    case 'error': logPrefix = '[ERROR]'; break;
-  }
-
-  let formattedMessage = `${getTimestamp()} ${logPrefix} `;
-
-  // Format the primary message
-  if (message instanceof Error) {
-    formattedMessage += `${message.name}: ${message.message}`;
-    if (message.stack) {
-      formattedMessage += `\n${message.stack}`;
-    }
-  } else if (typeof message === 'object' && message !== null) {
-    try {
-      formattedMessage += JSON.stringify(message);
-    } catch (e) {
-      formattedMessage += `[Unstringifiable Object: ${Object.prototype.toString.call(message)}]`;
-    }
-  } else {
-    formattedMessage += String(message);
-  }
-
-  // Add additional data if provided
-  if (data !== undefined) {
-    formattedMessage += ' ';
-    if (data instanceof Error) {
-      formattedMessage += `${data.name}: ${data.message}`;
-      if (data.stack) {
-        formattedMessage += `\n${data.stack}`;
-      }
-    } else if (typeof data === 'object' && data !== null) {
-      try {
-        formattedMessage += JSON.stringify(data);
-      } catch (e) {
-        formattedMessage += `[Unstringifiable Object: ${Object.prototype.toString.call(data)}]`;
-      }
-    } else {
-      formattedMessage += String(data);
-    }
-  }
-
-  // Use console.error to prevent JSON communication issues with MCP
-  // All logs go to stderr as per PR's safer approach for MCP
-  console.error(formattedMessage);
-}
-
-/**
- * Log debug information - only shows when DEBUG environment variable is set
- * @param message Primary message or object to log
- * @param data Optional additional data to include in the log
- */
-function logDebug(message: unknown, data?: unknown): void {
-  // Only log debug messages if DEBUG env variable is set
-  if (process.env.DEBUG) {
-    logMessage('debug', message, data);
-  }
-}
-
-/**
- * Log info level messages
- * @param message Primary message or object to log
- * @param data Optional additional data to include in the log
- */
-function logInfo(message: unknown, data?: unknown): void {
-  logMessage('info', message, data);
-}
-
-/**
- * Log warning messages
- * @param message Primary message or object to log
- * @param data Optional additional data to include in the log
- */
-function logWarn(message: unknown, data?: unknown): void {
-  logMessage('warn', message, data);
-}
-
-/**
- * Log error messages
- * @param message Primary message or object to log
- * @param data Optional additional data to include in the log
- */
-function logError(message: unknown, data?: unknown): void {
-  logMessage('error', message, data);
-}
-
-/**
- * Start a performance measurement
- * @param markerId Unique identifier for the performance marker
- */
-function startPerformanceMarker(markerId: string): void {
-  performanceMarkers[markerId] = performance.now();
-  logDebug(`Performance marker started: ${markerId}`);
-}
-
-/**
- * End a performance measurement and log the duration
- * @param markerId Unique identifier for the performance marker
- * @param description Description of the operation being measured
- * @returns Duration in milliseconds
- */
-function endPerformanceMarker(markerId: string, description?: string): number {
-  if (!performanceMarkers[markerId]) {
-    logWarn(`Performance marker not found: ${markerId}`);
-    return 0;
-  }
-
-  const duration = performance.now() - performanceMarkers[markerId];
-  const desc = description || markerId;
-
-  logDebug(`${desc} completed in ${duration.toFixed(2)}ms`);
-
-  delete performanceMarkers[markerId];
-  return duration;
-}
 
 // ─── INTERFACES ────────────────────────────────────────────────────────
 interface ChatMessage {
@@ -300,8 +152,6 @@ class PerplexityMCPServer {
       await this.server.close();
       process.exit(0);
     });
-
-    logInfo('PerplexityMCPServer initialized'); // Added initial log
   }
 
   // ─── DATABASE METHODS ────────────────────────────────────────────────
@@ -348,19 +198,13 @@ class PerplexityMCPServer {
   // ─── BROWSER / PUPPETEER METHODS ───────────────────────────────────────
 
   private async initializeBrowser() {
-    const markerId = `browserInit-${++this.operationCount}`;
-    startPerformanceMarker(markerId);
-    logInfo('Initializing browser...'); // Changed log level
-
     if (this.isInitializing) {
-      logInfo('Browser initialization already in progress...'); // Changed log level
-      endPerformanceMarker(markerId, 'Browser initialization (skipped, already in progress)');
+      console.log('Browser initialization already in progress...');
       return;
     }
     this.isInitializing = true;
     try {
       if (this.browser) {
-        logInfo('Closing existing browser instance...'); // Changed log level
         await this.browser.close();
       }
       this.browser = await puppeteer.launch({
@@ -383,26 +227,19 @@ class PerplexityMCPServer {
       await this.page.setUserAgent(CONFIG.USER_AGENT);
       this.page.setDefaultNavigationTimeout(CONFIG.PAGE_TIMEOUT);
       await this.navigateToPerplexity();
-      logInfo('Browser initialized successfully'); // Added success log
     } catch (error) {
-      logError('Browser initialization failed:', error); // Changed log level
+      console.error('Browser initialization failed:', error);
       throw error;
     } finally {
       this.isInitializing = false;
-      endPerformanceMarker(markerId, 'Browser initialization');
     }
   }
 
   private async navigateToPerplexity() {
-    const markerId = `nav-${++this.operationCount}`;
-    startPerformanceMarker(markerId);
-    if (!this.page) {
-        endPerformanceMarker(markerId, 'Navigation (failed, page null)');
-        throw new Error('Page not initialized');
-    }
+    if (!this.page) throw new Error('Page not initialized');
     try {
-      logInfo('Navigating to Perplexity.ai...'); // Changed log level
-
+      console.log('Navigating to Perplexity.ai...');
+      
       // Try multiple waitUntil strategies in case one fails
       const waitUntilOptions = ['networkidle2', 'domcontentloaded', 'load'] as const;
       let navigationSuccessful = false;
@@ -411,18 +248,18 @@ class PerplexityMCPServer {
         if (navigationSuccessful) break;
         
         try {
-          logDebug(`Attempting navigation with waitUntil: ${waitUntil}`); // Changed log level
+          console.log(`Attempting navigation with waitUntil: ${waitUntil}`);
           await this.page.goto('https://www.perplexity.ai/', {
             waitUntil,
             timeout: CONFIG.PAGE_TIMEOUT
           });
           navigationSuccessful = true;
-          logInfo(`Navigation successful with waitUntil: ${waitUntil}`); // Changed log level
+          console.log(`Navigation successful with waitUntil: ${waitUntil}`);
         } catch (navError) {
-          logWarn(`Navigation with waitUntil: ${waitUntil} failed:`, navError); // Changed log level
+          console.warn(`Navigation with waitUntil: ${waitUntil} failed:`, navError);
           // If this is the last option, we'll let the error propagate to the outer catch
           if (waitUntil !== waitUntilOptions[waitUntilOptions.length - 1]) {
-            logInfo('Trying next navigation strategy...'); // Changed log level
+            console.log('Trying next navigation strategy...');
           }
         }
       }
@@ -430,56 +267,50 @@ class PerplexityMCPServer {
       if (!navigationSuccessful) {
         throw new Error('All navigation strategies failed');
       }
-
+      
       // Allow extra time for the page to settle and JavaScript to initialize
-      logInfo('Waiting for page to settle...'); // Changed log level
+      console.log('Waiting for page to settle...');
       await new Promise((resolve) => setTimeout(resolve, 7000)); // Increased from 5000 to 7000
-
+      
       // Check if page loaded correctly
       const pageTitle = await this.page.title().catch(() => '');
       const pageUrl = this.page.url();
-      logInfo(`Page loaded: ${pageUrl} (${pageTitle})`); // Changed log level
-
+      console.log(`Page loaded: ${pageUrl} (${pageTitle})`);
+      
       // Verify we're on the correct domain
       if (!pageUrl.includes('perplexity.ai')) {
-        logError(`Unexpected URL: ${pageUrl}`); // Changed log level
+        console.error(`Unexpected URL: ${pageUrl}`);
         throw new Error(`Navigation redirected to unexpected URL: ${pageUrl}`);
       }
-
-      logInfo('Waiting for search input...'); // Changed log level
+      
+      console.log('Waiting for search input...');
       const searchInput = await this.waitForSearchInput();
       if (!searchInput) {
-        logError('Search input not found, taking screenshot for debugging'); // Changed log level
+        console.error('Search input not found, taking screenshot for debugging');
         await this.page.screenshot({ path: 'debug_no_search_input.png', fullPage: true });
         throw new Error('Search input not found after navigation');
       }
-
-      logInfo('Navigation to Perplexity.ai completed successfully'); // Changed log level
-      endPerformanceMarker(markerId, 'Navigation');
+      
+      console.log('Navigation to Perplexity.ai completed successfully');
     } catch (error) {
-      logError('Navigation failed:', error); // Changed log level
-      endPerformanceMarker(markerId, 'Navigation (failed)');
-
+      console.error('Navigation failed:', error);
+      
       // Try to take a screenshot of the failed state if possible
       try {
         if (this.page) {
           await this.page.screenshot({ path: 'debug_navigation_failed.png', fullPage: true });
-          logInfo('Captured screenshot of failed navigation state'); // Changed log level
+          console.log('Captured screenshot of failed navigation state');
         }
       } catch (screenshotError) {
-        logError('Failed to capture screenshot:', screenshotError); // Changed log level
+        console.error('Failed to capture screenshot:', screenshotError);
       }
-
-      throw error; // Re-throw the original navigation error
+      
+      throw error;
     }
   }
 
   private async setupBrowserEvasion() {
-    if (!this.page) {
-        logWarn('Cannot setup browser evasion, page is null');
-        return;
-    }
-    logDebug('Setting up browser evasion...');
+    if (!this.page) return;
     await this.page.evaluateOnNewDocument(() => {
       // Overwrite navigator properties to help avoid detection
       Object.defineProperties(navigator, {
@@ -577,21 +408,18 @@ class PerplexityMCPServer {
             return el && !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true';
           }, selector);
           if (isInteractive) {
-            logInfo(`Found working search input: ${selector}`); // Changed log level
+            console.log(`Found working search input: ${selector}`);
             this.searchInputSelector = selector;
             return selector;
-          } else {
-            logDebug(`Selector '${selector}' found but not interactive`);
           }
         }
       } catch (error) {
-        // Don't log error here, it's expected if selector not found
-        logDebug(`Selector '${selector}' not found or timed out`);
+        console.warn(`Selector '${selector}' not found or not interactive`);
       }
     }
     // Take a screenshot for debugging if none is found
-    logError('No working search input found after checking all selectors'); // Changed log level
     await this.page.screenshot({ path: 'debug_search_not_found.png', fullPage: true });
+    console.error('No working search input found');
     return null;
   }
 
@@ -627,22 +455,20 @@ class PerplexityMCPServer {
   private async recoveryProcedure(error?: Error) {
     const recoveryLevel = this.determineRecoveryLevel(error);
     const opId = ++this.operationCount;
-    const markerId = `recovery-${opId}`;
-    startPerformanceMarker(markerId);
-
-    logError(`Starting recovery procedure (Level ${recoveryLevel})`, error); // Use logError for visibility
+    
+    this.log('info', 'Starting recovery procedure');
 
     try {
       switch(recoveryLevel) {
         case 1: // Page refresh
-          logError('Recovery: Attempting page refresh'); // Use logError
+          this.log('info', 'Attempting page refresh');
           if (this.page) {
             await this.page.reload({timeout: CONFIG.TIMEOUT_PROFILES.navigation});
           }
           break;
-
+          
         case 2: // New page
-          logError('Recovery: Creating new page instance'); // Use logError
+          this.log('info', 'Creating new page instance');
           if (this.page) {
             await this.page.close();
           }
@@ -653,10 +479,10 @@ class PerplexityMCPServer {
             await this.page.setUserAgent(CONFIG.USER_AGENT);
           }
           break;
-
+          
         case 3: // Full restart
         default:
-          logError('Recovery: Performing full browser restart'); // Use logError
+          this.log('info', 'Performing full browser restart');
           if (this.page) {
             await this.page.close();
           }
@@ -666,27 +492,27 @@ class PerplexityMCPServer {
           this.page = null;
           this.browser = null;
           await new Promise(resolve => setTimeout(resolve, CONFIG.RECOVERY_WAIT_TIME));
-          await this.initializeBrowser(); // This already has logging and perf markers
+          await this.initializeBrowser();
           break;
       }
-
-      logError('Recovery completed'); // Use logError
-      endPerformanceMarker(markerId, `Recovery Level ${recoveryLevel}`);
+      
+      this.log('info', 'Recovery completed');
     } catch (recoveryError) {
-      logError('Recovery failed', recoveryError); // Use logError
-      endPerformanceMarker(markerId, `Recovery Level ${recoveryLevel} (failed)`);
-
+      this.log('error', 'Recovery failed: ' + (recoveryError instanceof Error ? recoveryError.message : String(recoveryError)));
+      
       // Fall back to more aggressive recovery if initial attempt fails
       if (recoveryLevel < 3) {
-        logError('Attempting higher level recovery'); // Use logError
+        this.log('info', 'Attempting higher level recovery');
         await this.recoveryProcedure(new Error('Fallback recovery'));
       } else {
-        throw recoveryError; // Re-throw if highest level recovery failed
+        throw recoveryError;
       }
     }
   }
 
-  // Removed the old log method as we now use logInfo/Warn/Error/Debug
+  private log(level: 'info'|'error'|'warn', message: string) {
+    console[level](message);
+  }
 
   private resetIdleTimeout() {
     if (this.idleTimeout) {
@@ -694,7 +520,7 @@ class PerplexityMCPServer {
     }
 
     this.idleTimeout = setTimeout(async () => {
-      logInfo('Browser idle timeout reached, closing browser...'); // Changed log level
+      console.log('Browser idle timeout reached, closing browser...');
       try {
         if (this.page) {
           await this.page.close();
@@ -705,9 +531,9 @@ class PerplexityMCPServer {
           this.browser = null;
         }
         this.isInitializing = false; // Reset initialization flag
-        logInfo('Browser cleanup completed successfully'); // Changed log level
+        console.log('Browser cleanup completed successfully');
       } catch (error) {
-        logError('Error during browser cleanup:', error); // Changed log level
+        console.error('Error during browser cleanup:', error);
         // Reset states even if cleanup fails
         this.page = null;
         this.browser = null;
@@ -720,31 +546,28 @@ class PerplexityMCPServer {
     operation: () => Promise<T>,
     maxRetries = CONFIG.MAX_RETRIES
   ): Promise<T> {
-    const markerId = `retryOp-${++this.operationCount}`;
-    startPerformanceMarker(markerId);
     let lastError: Error | null = null;
     let consecutiveTimeouts = 0;
     let consecutiveNavigationErrors = 0;
-
+    
     for (let i = 0; i < maxRetries; i++) {
       try {
-        logInfo(`Attempt ${i + 1}/${maxRetries}...`); // Changed log level
+        console.log(`Attempt ${i + 1}/${maxRetries}...`);
         const result = await operation();
         // Reset counters on success
         consecutiveTimeouts = 0;
         consecutiveNavigationErrors = 0;
-        endPerformanceMarker(markerId, `Retry Operation (Success on attempt ${i + 1})`);
         return result;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        logError(`Attempt ${i + 1} failed:`, error); // Changed log level
-
+        console.error(`Attempt ${i + 1} failed:`, error);
+        
         // Exit early if we've reached the max retries
         if (i === maxRetries - 1) {
-          logError(`Maximum retry attempts (${maxRetries}) reached. Giving up.`); // Changed log level
+          console.error(`Maximum retry attempts (${maxRetries}) reached. Giving up.`);
           break;
         }
-
+        
         // Check for specific error conditions
         const errorMsg = error instanceof Error ? error.message : String(error);
         const isTimeoutError = errorMsg.includes('timeout') || errorMsg.includes('Timed out');
@@ -754,93 +577,88 @@ class PerplexityMCPServer {
         
         // If CAPTCHA is detected, try to recover immediately
         if (await this.checkForCaptcha()) {
-          logError('CAPTCHA detected! Initiating recovery...'); // Changed log level
+          console.error('CAPTCHA detected! Initiating recovery...');
           await this.recoveryProcedure();
           // Add a small delay after recovery
           await new Promise((resolve) => setTimeout(resolve, 3000));
           continue;
         }
-
+        
         // Handle timeout errors with progressive backoff
         if (isTimeoutError) {
-          logError(`Timeout detected during operation (${++consecutiveTimeouts} consecutive), attempting recovery...`); // Changed log level
+          console.error(`Timeout detected during operation (${++consecutiveTimeouts} consecutive), attempting recovery...`);
           await this.recoveryProcedure();
-
+          
           // If we have multiple consecutive timeouts, wait longer between attempts
           const timeoutWaitTime = Math.min(5000 * consecutiveTimeouts, 30000);
-          logInfo(`Waiting ${timeoutWaitTime/1000} seconds after timeout...`); // Changed log level
+          console.log(`Waiting ${timeoutWaitTime/1000} seconds after timeout...`);
           await new Promise((resolve) => setTimeout(resolve, timeoutWaitTime));
           continue;
         }
-
+        
         // Handle navigation errors with progressive backoff
         if (isNavigationError) {
-          logError(`Navigation error detected (${++consecutiveNavigationErrors} consecutive), attempting recovery...`); // Changed log level
+          console.error(`Navigation error detected (${++consecutiveNavigationErrors} consecutive), attempting recovery...`);
           await this.recoveryProcedure();
-
+          
           // If we have multiple consecutive navigation errors, wait longer
           const navWaitTime = Math.min(8000 * consecutiveNavigationErrors, 40000);
-          logInfo(`Waiting ${navWaitTime/1000} seconds after navigation error...`); // Changed log level
+          console.log(`Waiting ${navWaitTime/1000} seconds after navigation error...`);
           await new Promise((resolve) => setTimeout(resolve, navWaitTime));
           continue;
         }
-
+        
         // Handle connection errors
         if (isConnectionError || isProtocolError) {
-          logError('Connection or protocol error detected, attempting recovery with longer wait...'); // Changed log level
+          console.error('Connection or protocol error detected, attempting recovery with longer wait...');
           await this.recoveryProcedure();
           // Wait longer for connection issues
           const connectionWaitTime = 15000 + (Math.random() * 10000);
-          logInfo(`Waiting ${Math.round(connectionWaitTime/1000)} seconds after connection error...`); // Changed log level
+          console.log(`Waiting ${Math.round(connectionWaitTime/1000)} seconds after connection error...`);
           await new Promise((resolve) => setTimeout(resolve, connectionWaitTime));
           continue;
         }
-
+        
         // Exponential backoff delay with progressive jitter to avoid thundering herd
         // More retries = more jitter to spread out retry attempts
         const baseDelay = Math.min(1000 * Math.pow(2, i), 30000);
         const maxJitter = Math.min(1000 * (i + 1), 10000); // Jitter increases with retry count
         const jitter = Math.random() * maxJitter;
         const delay = baseDelay + jitter;
-        logInfo(`Retrying in ${Math.round(delay/1000)} seconds (base: ${Math.round(baseDelay/1000)}s, jitter: ${Math.round(jitter/1000)}s)...`); // Changed log level
+        console.log(`Retrying in ${Math.round(delay/1000)} seconds (base: ${Math.round(baseDelay/1000)}s, jitter: ${Math.round(jitter/1000)}s)...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
-
+        
         // Try re-navigating with error handling
         try {
-          logInfo('Attempting to re-navigate to Perplexity...'); // Changed log level
-          await this.navigateToPerplexity(); // This has its own logging/perf
-          logInfo('Re-navigation successful'); // Changed log level
+          console.log('Attempting to re-navigate to Perplexity...');
+          await this.navigateToPerplexity();
+          console.log('Re-navigation successful');
         } catch (navError) {
-          logError('Navigation failed during retry:', navError); // Changed log level
+          console.error('Navigation failed during retry:', navError);
           // If navigation fails, wait a bit longer before next retry
           const navFailWaitTime = 10000 + (Math.random() * 5000);
-          logInfo(`Navigation failed, waiting ${Math.round(navFailWaitTime/1000)} seconds before next attempt...`); // Changed log level
+          console.log(`Navigation failed, waiting ${Math.round(navFailWaitTime/1000)} seconds before next attempt...`);
           await new Promise((resolve) => setTimeout(resolve, navFailWaitTime));
-
+          
           // If this is a later retry attempt and navigation keeps failing, try a full recovery
           if (i > 1) {
-            logInfo('Multiple navigation failures, attempting full recovery...'); // Changed log level
+            console.log('Multiple navigation failures, attempting full recovery...');
             await this.recoveryProcedure();
           }
         }
       }
     }
-
+    
     // If we've exhausted all retries, provide a detailed error message
     const errorMessage = lastError ? 
       `Operation failed after ${maxRetries} retries. Last error: ${lastError.message}` : 
       `Operation failed after ${maxRetries} retries with unknown error`;
-
-    logError(errorMessage); // Changed log level
-    endPerformanceMarker(markerId, `Retry Operation (Failed after ${maxRetries} attempts)`);
+    
+    console.error(errorMessage);
     throw new Error(errorMessage);
   }
 
   private async waitForCompleteAnswer(page: Page): Promise<string> {
-    const markerId = `waitForAnswer-${++this.operationCount}`;
-    startPerformanceMarker(markerId);
-    logInfo('Waiting for complete answer...'); // Added log
-
     // Set a timeout to ensure we don't wait indefinitely, but make it much longer
     const timeoutPromise = new Promise<string>((_, reject) => {
       setTimeout(() => {
@@ -849,7 +667,6 @@ class PerplexityMCPServer {
     });
 
     const answerPromise = page.evaluate(async () => {
-      // Note: console.log inside evaluate won't show in server logs directly
       const getAnswer = () => {
         const elements = Array.from(document.querySelectorAll('.prose'));
         const answerText = elements.map((el) => (el as HTMLElement).innerText.trim()).join('\n\n');
@@ -881,36 +698,43 @@ class PerplexityMCPServer {
         
         if (currentLength > 0) {
           if (currentLength > lastLength) {
-            // Content grew
             lastLength = currentLength;
             stabilityCounter = 0;
             noChangeCounter = 0;
           } else if (currentAnswer === lastAnswer) {
-            // Content stable
             stabilityCounter++;
             noChangeCounter++;
-
-            // Exit conditions based on stability and length
-            if (currentLength > 1000 && stabilityCounter >= 3) break; // Long answer stable
-            if (currentLength > 500 && stabilityCounter >= 4) break; // Medium answer stable
-            if (stabilityCounter >= 5) break; // Short answer stable
+            
+            if (currentLength > 1000 && stabilityCounter >= 3) {
+              console.log('Long answer stabilized, exiting early');
+              break;
+            } else if (currentLength > 500 && stabilityCounter >= 4) {
+              console.log('Medium answer stabilized, exiting');
+              break;
+            } else if (stabilityCounter >= 5) {
+              console.log('Short answer stabilized, exiting');
+              break;
+            }
           } else {
-            // Content changed but didn't grow (e.g., formatting)
             noChangeCounter++;
-            stabilityCounter = 0; // Reset stability if content changes
+            stabilityCounter = 0;
           }
           lastAnswer = currentAnswer;
-
-          // Exit if content hasn't changed for a while but is substantial
-          if (noChangeCounter >= 10 && currentLength > 200) break;
+          
+          if (noChangeCounter >= 10 && currentLength > 200) {
+            console.log('Content stopped growing but has sufficient information');
+            break;
+          }
         }
-
-        // Check for completion indicators (e.g., punctuation at the end)
+        
         const lastProse = document.querySelector('.prose:last-child');
-        const isComplete = lastProse?.textContent?.trim().match(/[.?!]$/); // Check for ending punctuation
-
+        const isComplete = lastProse?.textContent?.includes('.') || 
+                          lastProse?.textContent?.includes('?') || 
+                          lastProse?.textContent?.includes('!');
+                          
         if (isComplete && stabilityCounter >= 2 && currentLength > 100) {
-          break; // Exit if likely complete and stable
+          console.log('Completion indicators found, exiting');
+          break;
         }
       }
       return lastAnswer || 'No answer content found. The website may be experiencing issues.';
@@ -918,12 +742,9 @@ class PerplexityMCPServer {
 
     try {
       // Race between the answer generation and the timeout
-      const result = await Promise.race([answerPromise, timeoutPromise]);
-      endPerformanceMarker(markerId, 'Wait for Complete Answer');
-      return result;
+      return await Promise.race([answerPromise, timeoutPromise]);
     } catch (error) {
-      logError('Error waiting for complete answer:', error); // Changed log level
-      endPerformanceMarker(markerId, 'Wait for Complete Answer (failed/timeout)');
+      console.error('Error waiting for complete answer:', error);
       // Return partial answer if available
       try {
         // Make multiple attempts to get partial content
@@ -941,37 +762,33 @@ class PerplexityMCPServer {
             // Wait briefly before trying again
             await new Promise(resolve => setTimeout(resolve, 1000));
           } catch (evalError) {
-            logError(`Attempt ${attempt + 1} to get partial answer failed:`, evalError); // Changed log level
+            console.error(`Attempt ${attempt + 1} to get partial answer failed:`, evalError);
             // Wait before retrying
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
-
+        
         return 'Answer retrieval timed out. The service might be experiencing high load. Please try again with a more specific query.';
       } catch (e) {
-        logError('Failed to retrieve partial answer:', e); // Changed log level
+        console.error('Failed to retrieve partial answer:', e);
         return 'Answer retrieval timed out. Please try again later.';
       }
     }
   }
 
   private async performSearch(query: string): Promise<string> {
-    const markerId = `performSearch-${++this.operationCount}`;
-    startPerformanceMarker(markerId);
-    logInfo(`Performing search for query: "${query.substring(0, 50)}${query.length > 50 ? '...' : ''}"`); // Added log
-
     // Set a global timeout for the entire operation with a much longer duration
     const operationTimeout = setTimeout(() => {
-      logError('Global operation timeout reached, initiating recovery...'); // Changed log level
+      console.error('Global operation timeout reached, initiating recovery...');
       this.recoveryProcedure().catch(err => {
-        logError('Recovery after timeout failed:', err); // Changed log level
+        console.error('Recovery after timeout failed:', err);
       });
     }, CONFIG.PAGE_TIMEOUT - CONFIG.MCP_TIMEOUT_BUFFER);
 
     try {
       // If browser/page is not initialized or page is closed, initialize it
       if (!this.browser || !this.page || (this.page && this.page.isClosed())) {
-        logInfo('Browser/page not initialized or page closed, initializing now...'); // Changed log level
+        console.log('Browser/page not initialized or page closed, initializing now...');
         if (this.page && !this.page.isClosed()) {
           await this.page.close();
         }
@@ -986,25 +803,28 @@ class PerplexityMCPServer {
       this.resetIdleTimeout();
       
       // Use retry operation for the entire search process with increased retries
-      const result = await this.retryOperation(async () => {
-        logDebug(`Navigating to Perplexity for query: "${query.substring(0, 30)}${query.length > 30 ? '...' : ''}"`); // Changed log level
-        await this.navigateToPerplexity(); // Has own logging/perf
+      return await this.retryOperation(async () => {
+        console.log(`Navigating to Perplexity for query: "${query.substring(0, 30)}${query.length > 30 ? '...' : ''}"`);
+        await this.navigateToPerplexity();
 
         // Validate main frame is attached
         if (!this.page || this.page.mainFrame().isDetached()) {
-          logError('Main frame is detached, will retry with new browser instance'); // Changed log level
+          console.error('Main frame is detached, will retry with new browser instance');
           throw new Error('Main frame is detached');
         }
-
-        logDebug('Waiting for search input...'); // Changed log level
-        const selector = await this.waitForSearchInput(); // Has own logging
+        
+        console.log('Waiting for search input...');
+        const selector = await this.waitForSearchInput();
         if (!selector) {
-          // Error already logged in waitForSearchInput
+          console.error('Search input not found, taking screenshot for debugging');
+          if (this.page) {
+            await this.page.screenshot({ path: 'debug_search_input_not_found.png', fullPage: true });
+          }
           throw new Error('Search input not found');
         }
 
-        logDebug(`Found search input with selector: ${selector}`); // Changed log level
-
+        console.log(`Found search input with selector: ${selector}`);
+        
         // Clear any existing text with multiple approaches for reliability
         try {
           // First approach: using evaluate
@@ -1017,20 +837,20 @@ class PerplexityMCPServer {
           await this.page.click(selector, { clickCount: 3 }); // Triple click to select all text
           await this.page.keyboard.press('Backspace'); // Delete selected text
         } catch (clearError) {
-          logWarn('Error clearing input field:', clearError); // Changed log level
+          console.warn('Error clearing input field:', clearError);
           // Continue anyway, as the typing might still work
         }
 
         // Type the query with variable delay to appear more human-like
-        logDebug('Typing search query...'); // Changed log level
+        console.log('Typing search query...');
         const typeDelay = Math.floor(Math.random() * 20) + 20; // Random delay between 20-40ms
         await this.page.type(selector, query, { delay: typeDelay });
         await this.page.keyboard.press('Enter');
 
         // Wait for response with multiple selector options and extended timeout
-        logDebug('Waiting for response content selectors...'); // Changed log level
+        console.log('Waiting for response...');
         const proseSelectors = [
-          '.prose',
+          '.prose', 
           '[class*="prose"]',
           '[class*="answer"]',
           '[class*="result"]'
@@ -1043,75 +863,71 @@ class PerplexityMCPServer {
               timeout: CONFIG.SELECTOR_TIMEOUT,
               visible: true
             });
-            logDebug(`Found response with selector: ${proseSelector}`); // Changed log level
+            console.log(`Found response with selector: ${proseSelector}`);
             selectorFound = true;
             break;
           } catch (selectorError) {
-            logDebug(`Selector ${proseSelector} not found, trying next...`); // Changed log level
+            console.warn(`Selector ${proseSelector} not found, trying next...`);
           }
         }
-
+        
         if (!selectorFound) {
-          logError('No response selectors found, checking page state...'); // Changed log level
+          console.error('No response selectors found, checking page state...');
           // Check if page is still valid before throwing
           if (!this.page || this.page.mainFrame().isDetached()) {
             throw new Error('Page became invalid while waiting for response');
           }
           // Take a screenshot for debugging
           await this.page.screenshot({ path: 'debug_prose_not_found.png', fullPage: true });
-
+          
           // Check if there's any visible text content that might contain an answer
           const pageText = await this.page.evaluate(() => document.body.innerText);
           if (pageText && pageText.length > 200) {
-            logInfo('Found text content on page, attempting to extract answer via fallback...'); // Changed log level
+            console.log('Found text content on page, attempting to extract answer...');
             // Try to extract meaningful content
             return await this.extractFallbackAnswer(this.page);
           }
-
+          
           throw new Error('Timed out waiting for response from Perplexity');
         }
 
-        // waitForCompleteAnswer has its own logging/perf
+        console.log('Waiting for complete answer...');
         const answer = await this.waitForCompleteAnswer(this.page);
-        logInfo(`Answer received (${answer.length} characters)`); // Changed log level
+        console.log(`Answer received (${answer.length} characters)`);
         return answer;
-      }, CONFIG.MAX_RETRIES); // retryOperation has its own logging/perf
-
-      endPerformanceMarker(markerId, 'Perform Search');
-      return result;
+      }, CONFIG.MAX_RETRIES);
     } catch (error) {
-      logError('Search operation failed:', error); // Changed log level
-      endPerformanceMarker(markerId, 'Perform Search (failed)');
-
+      console.error('Search operation failed:', error);
+      
       // Handle specific error cases
       if (error instanceof Error) {
         if (error.message.includes('detached') || error.message.includes('Detached')) {
-          logError('Frame detachment detected, attempting recovery...'); // Changed log level
+          console.error('Frame detachment detected, attempting recovery...');
           await this.recoveryProcedure();
           // Return a helpful message instead of retrying to avoid potential infinite loops
           return 'The search operation encountered a technical issue. Please try again with a more specific query.';
         }
-
+        
         if (error.message.includes('timeout') || error.message.includes('Timed out')) {
-          logError('Timeout detected, attempting recovery...'); // Changed log level
+          console.error('Timeout detected, attempting recovery...');
           await this.recoveryProcedure();
           return 'The search operation is taking longer than expected. This might be due to high server load. Your query has been submitted and we\'re waiting for results. Please try again with a more specific query if needed.';
         }
-
+        
         if (error.message.includes('navigation') || error.message.includes('Navigation')) {
-          logError('Navigation error detected, attempting recovery...'); // Changed log level
+          console.error('Navigation error detected, attempting recovery...');
           await this.recoveryProcedure();
           return 'The search operation encountered a navigation issue. This might be due to network connectivity problems. Please try again later.';
         }
       }
-
+      
       // For any other errors, return a user-friendly message
       return `The search operation could not be completed. Error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again later with a more specific query.`;
     } finally {
       clearTimeout(operationTimeout);
     }
   }
-
+  
   // Helper method to extract answer when normal selectors fail
   private async extractFallbackAnswer(page: Page): Promise<string> {
     try {
@@ -1150,7 +966,7 @@ class PerplexityMCPServer {
         return document.body.innerText.substring(0, 2000) + '\n\n[Note: Content extraction used fallback method due to page structure changes]';
       });
     } catch (error) {
-      logError('Error in fallback answer extraction:', error); // Changed log level
+      console.error('Error in fallback answer extraction:', error);
       return 'Unable to extract answer content. The website structure may have changed.';
     }
   }
@@ -1241,8 +1057,8 @@ Please provide:
       const result = await this.performSearch(prompt);
       return result;
     } catch (error) {
-      logWarn('Detailed analysis failed, trying simplified version:', error); // Changed log level
-
+      console.warn('Detailed analysis failed, trying simplified version:', error);
+      
       // Fallback to simpler analysis
       const simplePrompt = `List deprecated patterns in this code${
         technology ? ' for ' + technology : ''
@@ -1672,16 +1488,11 @@ ${codeChunks[0]}`;
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
-      const opId = ++this.operationCount;
-      const markerId = `mcpCall-${opId}-${request.params.name}`;
-      startPerformanceMarker(markerId);
-      logInfo(`MCP Tool Call #${opId}: ${request.params.name}`, request.params.arguments); // Added log
-
       // Set a timeout for the entire MCP request
       const requestTimeout = setTimeout(() => {
-        logError(`MCP request #${opId} (${request.params.name}) is taking too long, this might lead to a timeout`); // Changed log level
+        console.error('MCP request is taking too long, this might lead to a timeout');
       }, 60000); // 60 seconds warning
-
+      
       try {
         const toolName = request.params.name;
         const handler = this.toolHandlers[toolName];
@@ -1690,9 +1501,8 @@ ${codeChunks[0]}`;
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${toolName}`);
         }
 
-        // Handlers now contain their own logging/perf markers where appropriate
         const responseContent = await handler(request.params.arguments);
-
+        
         // Special case for chat to return chat_id
         if (toolName === 'chat_perplexity') {
           const chatId = request.params.arguments.chat_id || crypto.randomUUID();
@@ -1704,22 +1514,20 @@ ${codeChunks[0]}`;
           };
         }
 
-        endPerformanceMarker(markerId, `MCP Tool Call #${opId} ${toolName}`);
         return {
           content: [{ type: 'text', text: responseContent }]
         };
       } catch (error) {
-        logError(`Error in tool handler #${opId} (${request.params.name}):`, error); // Changed log level
-        endPerformanceMarker(markerId, `MCP Tool Call #${opId} ${request.params.name} (failed)`);
-
+        console.error('Error in tool handler:', error);
+        
         if (error instanceof Error) {
           const errorMsg = error.message;
-
+          
           if (errorMsg.includes('timeout') || errorMsg.includes('Timed out')) {
-            logError(`Timeout detected in MCP request #${opId}`); // Changed log level
+            console.error('Timeout detected in MCP request');
             return {
-              content: [{
-                type: 'text',
+              content: [{ 
+                type: 'text', 
                 text: 'The operation timed out. This might be due to high server load or network issues. Please try again with a more specific query.' 
               }]
             };
@@ -1744,20 +1552,16 @@ ${codeChunks[0]}`;
 
   async run() {
     try {
-      await this.initializeBrowser(); // Has own logging/perf
+      await this.initializeBrowser();
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      logInfo('Perplexity MCP server connected and running'); // Changed log level
+      console.error('Perplexity MCP server running');
     } catch (error) {
-      logError('Failed to start server:', error); // Changed log level
+      console.error('Failed to start server:', error);
       process.exit(1);
     }
   }
 }
 
 const server = new PerplexityMCPServer();
-// Add top-level catch for run() errors
-server.run().catch(err => {
-    logError('Unhandled error during server execution:', err);
-    process.exit(1);
-});
+server.run().catch(console.error);
