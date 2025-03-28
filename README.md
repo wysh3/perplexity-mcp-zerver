@@ -9,6 +9,17 @@ A research level Model Context Protocol (MCP) server implementation providing AI
 - 🚫 No API Key required (relies on web interaction).
 - 🛠️ TypeScript-first implementation.
 - 🌐 Uses Puppeteer for browser automation.
+- 🔒 Fixed JSON communication to prevent parsing errors.
+
+## JSON Communication Improvement
+
+This fork includes important fixes to prevent JSON parsing errors during communication with MCP clients:
+
+- All logging (info, error, warn) now uses `console.error` instead of `console.log` to ensure logs don't interfere with JSON output.
+- Added specialized logging functions (`safeLog`, `logError`, `logWarn`) that properly format and escape content to avoid breaking JSON parsing.
+- The recovery procedure now properly logs completion messages to stderr.
+
+These changes ensure logs don't interfere with the stdout channel used for JSON communication.
 
 ## Tools
 
@@ -31,7 +42,7 @@ Maintains ongoing conversations with Perplexity AI. Stores chat history locally 
 > just copy <a href="https://raw.githubusercontent.com/wysh3/perplexity-mcp-zerver/main/README.md" title="Copy Full README Content (opens raw file view)">📋</a> and paste the readme and let the AI take care of the rest
 1. Clone or download this repository:
 ```bash
-git clone https://github.com/wysh3/perplexity-mcp-zerver.git
+git clone https://github.com/rohithgoud30/perplexity-mcp-zerver.git
 cd perplexity-mcp-zerver
 ```
 
