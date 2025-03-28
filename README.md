@@ -10,13 +10,31 @@ A research level Model Context Protocol (MCP) server implementation providing AI
 - 🛠️ TypeScript-first implementation.
 - 🌐 Uses Puppeteer for browser automation.
 - 🔒 Fixed JSON communication to prevent parsing errors.
+- ⏱️ Performance tracking for operations.
+- 🔍 Enhanced logging with timestamps and debug level.
+
+## Enhanced Logging System
+
+The logging system has been significantly improved with the following features:
+
+- **Timestamped Logs**: All log messages now include ISO timestamps for better traceability.
+- **Debug Level Support**: Added a `DEBUG` environment variable to enable detailed debug logging.
+- **Performance Tracking**: Built-in performance markers to measure and log operation durations.
+- **Consistent Formatting**: All log levels use the same formatting strategy for consistency.
+- **JSON-Safe Communication**: All logs are safely sent to stderr to avoid interfering with JSON communication.
+
+To enable debug logs, run the server with the DEBUG environment variable:
+
+```bash
+DEBUG=true node build/index.js
+```
 
 ## JSON Communication Improvement
 
 This fork includes important fixes to prevent JSON parsing errors during communication with MCP clients:
 
-- All logging (info, error, warn) now uses `console.error` instead of `console.log` to ensure logs don't interfere with JSON output.
-- Added specialized logging functions (`safeLog`, `logError`, `logWarn`) that properly format and escape content to avoid breaking JSON parsing.
+- All logging (info, error, warn, debug) now uses `console.error` instead of `console.log` to ensure logs don't interfere with JSON output.
+- Added specialized logging functions (`logInfo`, `logError`, `logWarn`, `logDebug`) that properly format and escape content to avoid breaking JSON parsing.
 - The recovery procedure now properly logs completion messages to stderr.
 
 These changes ensure logs don't interfere with the stdout channel used for JSON communication.
