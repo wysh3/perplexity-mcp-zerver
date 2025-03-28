@@ -12,6 +12,17 @@ A research level Model Context Protocol (MCP) server implementation providing AI
 - 🔒 Fixed JSON communication to prevent parsing errors.
 - ⏱️ Performance tracking for operations.
 - 🔍 Enhanced logging with timestamps and debug level.
+- 🛡️ Fixed "Recovery completed" JSON parsing error.
+
+## 🆕 Fixed Recovery Procedure JSON Parsing Error
+
+This fork resolves the critical JSON parsing error: `MCP perplexity-server: Unexpected token 'R', "Recovery completed" is not valid JSON`
+
+The issue was caused by recovery messages being sent through stdout instead of stderr, which interfered with the JSON communication between MCP client and server. The fix:
+
+- All recovery procedure messages now use `logError()` to ensure they're sent to stderr
+- Modified the `log()` method to automatically route recovery-related info messages to stderr
+- Added special handling for recovery completion messages to guarantee they don't break JSON communication
 
 ## Enhanced Logging System
 
