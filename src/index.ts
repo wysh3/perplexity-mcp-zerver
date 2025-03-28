@@ -643,20 +643,21 @@ class PerplexityMCPServer {
     const opId = ++this.operationCount;
     const markerId = `recovery-${opId}`;
     
-    logInfo(`Starting recovery procedure (level ${recoveryLevel})`);
+    // IMPORTANT: Use logError for all recovery messages to ensure they don't interfere with JSON
+    logError(`Starting recovery procedure (level ${recoveryLevel})`);
     startPerformanceMarker(markerId);
 
     try {
       switch(recoveryLevel) {
         case 1: // Page refresh
-          logInfo('Recovery: Attempting page refresh');
+          logError('Recovery: Attempting page refresh');
           if (this.page) {
             await this.page.reload({timeout: CONFIG.TIMEOUT_PROFILES.navigation});
           }
           break;
 
         case 2: // New page
-          logInfo('Recovery: Creating new page instance');
+          logError('Recovery: Creating new page instance');
           if (this.page) {
             await this.page.close();
           }
@@ -670,7 +671,7 @@ class PerplexityMCPServer {
 
         case 3: // Full restart
         default:
-          logInfo('Recovery: Performing full browser restart');
+          logError('Recovery: Performing full browser restart');
           if (this.page) {
             await this.page.close();
           }
@@ -685,14 +686,15 @@ class PerplexityMCPServer {
       }
 
       const duration = endPerformanceMarker(markerId);
-      logInfo(`Recovery completed in ${duration.toFixed(2)}ms`);
+      // CRITICAL FIX: Use logError instead of logInfo for recovery completion message
+      logError(`Recovery completed in ${duration.toFixed(2)}ms`);
     } catch (recoveryError) {
       endPerformanceMarker(markerId);
       logError('Recovery failed', recoveryError);
 
       // Fall back to more aggressive recovery if initial attempt fails
       if (recoveryLevel < 3) {
-        logInfo('Attempting higher level recovery');
+        logError('Attempting higher level recovery');
         await this.recoveryProcedure(new Error('Fallback recovery'));
       } else {
         throw recoveryError;
@@ -818,7 +820,12 @@ class PerplexityMCPServer {
         logDebug(message, data);
         break;
       case 'info':
-        logInfo(message, data);
+        // For info messages in recovery-related areas, use logError to ensure proper stderr output
+        if (message.includes('recovery') || message.includes('Recovery')) {
+          logError(message, data);
+        } else {
+          logInfo(message, data);
+        }
         break;
       case 'warn':
         logWarn(message, data);
