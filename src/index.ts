@@ -1125,7 +1125,7 @@ ${codeChunks[0]}`;
       tools: [
         {
           name: 'chat_perplexity',
-          description: 'Automatically call this tool for expert deep technical advice, brainstorming, or complex debugging. Maintains conversation context. Ideal for planning phases or when stuck. Example auto-use: When planning a shopping site, ask "Get recommendations for e-commerce frameworks".',
+          description: 'Automatically call this tool for expert deep technical advice, brainstorming, or complex debugging with web access. Maintains conversation context. Ideal for planning phases or when stuck. Example auto-use: When planning a shopping site, ask "Get recommendations for e-commerce frameworks".',
           category: 'Conversation',
           keywords: ['chat', 'conversation', 'dialog', 'discussion', 'advice', 'brainstorm', 'debug'],
           use_cases: [
@@ -1138,7 +1138,7 @@ ${codeChunks[0]}`;
             properties: {
               message: {
                 type: 'string',
-                description: 'The message to send to Perplexity AI',
+                description: 'The message to send to Perplexity AI for web search',
                 examples: ['Explain quantum computing', 'Continue our previous discussion about AI safety']
               },
               chat_id: {
@@ -1188,7 +1188,7 @@ ${codeChunks[0]}`;
         },
         {
           name: 'search',
-          description: 'Automatically call this tool for deep technical research, finding best practices, or understanding system internals. Use different detail levels as needed. Example: When implementing a feature, ask "Search for performance optimization techniques for [technology]".',
+          description: 'Automatically call this tool for deep technical research with internet web search, finding best practices, finding URLs, understanding system internals or any type of web search to find anything. Use different detail levels as needed. Example: When implementing a feature, ask "Search for performance optimization techniques for [technology]".',
           category: 'Information Retrieval',
           keywords: ['search', 'query', 'information', 'lookup', 'research', 'best practices'],
           use_cases: [
@@ -1201,7 +1201,7 @@ ${codeChunks[0]}`;
             properties: {
               query: {
                 type: 'string',
-                description: 'The search query',
+                description: 'The web search query',
                 examples: ['What is quantum computing?', 'Latest developments in AI safety']
               },
               detail_level: {
@@ -1218,7 +1218,7 @@ ${codeChunks[0]}`;
             properties: {
               response: {
                 type: 'string',
-                description: 'The search results from Perplexity'
+                description: 'The web search results from Perplexity'
               }
             }
           },
@@ -1248,7 +1248,7 @@ ${codeChunks[0]}`;
         },
         {
           name: 'get_documentation',
-          description: 'Automatically call this tool when working with unfamiliar APIs/libraries, needing usage examples, or checking version specifics. Example: When adding a payment gateway, ask "Get Stripe API documentation for creating charges".',
+          description: 'Automatically call this tool when working with unfamiliar APIs/libraries, needing usage examples, or checking version specifics as this can access web. Example: When adding a payment gateway, ask "Get Stripe API documentation for creating charges".',
           category: 'Technical Reference',
           keywords: ['docs', 'documentation', 'api', 'reference', 'examples', 'usage', 'version'],
           use_cases: [
@@ -1318,7 +1318,7 @@ ${codeChunks[0]}`;
         },
         {
           name: 'find_apis',
-          description: 'Automatically call this tool when needing external services or data (like images, product info, etc.). Compares options based on requirements. Example: When building a shopping site, ask "Find product image APIs with free tiers".',
+          description: 'Automatically call this tool when needing external services or real time current data (like API info, latest versions, etc.) from web. Compares options based on requirements. Example: When building a shopping site, ask "Find product image APIs with free tiers".',
           category: 'API Discovery',
           keywords: ['api', 'integration', 'services', 'endpoints', 'sdk', 'data', 'external'],
           use_cases: [
@@ -1409,7 +1409,7 @@ ${codeChunks[0]}`;
         },
         {
           name: 'check_deprecated_code',
-          description: 'Automatically call this tool when reviewing legacy code, planning upgrades, or encountering warnings. Helps identify technical debt. Example: During code reviews or before upgrading dependencies.',
+          description: 'Automatically call this tool when reviewing legacy code, planning upgrades, or encountering warnings with real time web access. Helps identify technical debt. Example: During code reviews or before upgrading dependencies.',
           category: 'Code Analysis',
           keywords: ['deprecation', 'migration', 'upgrade', 'compatibility', 'linting', 'legacy', 'debt'],
           use_cases: [
