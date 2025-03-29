@@ -240,58 +240,61 @@ class PerplexityMCPServer {
     try {
       console.log('Navigating to Perplexity.ai...');
       
-      // Try multiple waitUntil strategies in case one fails
-      const waitUntilOptions = ['networkidle2', 'domcontentloaded', 'load'] as const;
-      let navigationSuccessful = false;
-      
-      for (const waitUntil of waitUntilOptions) {
-        if (navigationSuccessful) break;
-        
-        try {
-          console.log(`Attempting navigation with waitUntil: ${waitUntil}`);
-          await this.page.goto('https://www.perplexity.ai/', {
-            waitUntil,
-            timeout: CONFIG.PAGE_TIMEOUT
-          });
-          navigationSuccessful = true;
-          console.log(`Navigation successful with waitUntil: ${waitUntil}`);
-        } catch (navError) {
-          console.warn(`Navigation with waitUntil: ${waitUntil} failed:`, navError);
-          // If this is the last option, we'll let the error propagate to the outer catch
-          if (waitUntil !== waitUntilOptions[waitUntilOptions.length - 1]) {
-            console.log('Trying next navigation strategy...');
-          }
+      // Use 'domcontentloaded' as a balance between speed and initial readiness
+      try {
+        await this.page.goto('https://www.perplexity.ai/', {
+          waitUntil: 'domcontentloaded', // Wait for DOM parsing, not full load
+          timeout: CONFIG.PAGE_TIMEOUT
+        });
+      } catch (gotoError) {
+        // Ignore initial goto errors if they are timeout related, as we'll check readiness below
+        if (gotoError instanceof Error && !gotoError.message.toLowerCase().includes('timeout')) {
+          console.error('Initial navigation request failed:', gotoError);
+          throw gotoError; // Rethrow non-timeout errors
         }
+        console.warn('Navigation with waitUntil: domcontentloaded potentially timed out, proceeding with checks...');
       }
-      
-      if (!navigationSuccessful) {
-        throw new Error('All navigation strategies failed');
+
+      // Crucial check: Ensure the page/frame is still valid immediately after goto
+      if (this.page.isClosed() || this.page.mainFrame().isDetached()) {
+        console.error('Page closed or frame detached immediately after navigation attempt.');
+        throw new Error('Frame detached during navigation');
       }
-      
-      // Allow extra time for the page to settle and JavaScript to initialize
-      console.log('Waiting for page to settle...');
-      await new Promise((resolve) => setTimeout(resolve, 7000)); // Increased from 5000 to 7000
-      
-      // Check if page loaded correctly
-      const pageTitle = await this.page.title().catch(() => '');
-      const pageUrl = this.page.url();
+
+      console.log('Navigation initiated, waiting for search input to confirm readiness...');
+      const searchInput = await this.waitForSearchInput(); // Wait for a key element
+      if (!searchInput) {
+        console.error('Search input not found after navigation, taking screenshot for debugging');
+        if (!this.page.isClosed()) {
+          await this.page.screenshot({ path: 'debug_no_search_input.png', fullPage: true });
+        }
+        throw new Error('Search input not found after navigation - page might not have loaded correctly');
+      }
+      console.log('Search input found, page appears ready.');
+
+      // Allow some extra time for potential dynamic content loading
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // Reduced settle time
+
+      // Check page details (wrapped in try/catch)
+      let pageTitle = 'N/A';
+      let pageUrl = 'N/A';
+      try {
+        if (!this.page.isClosed()) {
+          pageTitle = await this.page.title();
+          pageUrl = this.page.url();
+        }
+      } catch (titleError) {
+        console.warn('Could not retrieve page title/URL after navigation:', titleError);
+      }
       console.log(`Page loaded: ${pageUrl} (${pageTitle})`);
-      
-      // Verify we're on the correct domain
-      if (!pageUrl.includes('perplexity.ai')) {
+
+      // Verify we're on the correct domain (if URL was retrieved)
+      if (pageUrl !== 'N/A' && !pageUrl.includes('perplexity.ai')) {
         console.error(`Unexpected URL: ${pageUrl}`);
         throw new Error(`Navigation redirected to unexpected URL: ${pageUrl}`);
       }
-      
-      console.log('Waiting for search input...');
-      const searchInput = await this.waitForSearchInput();
-      if (!searchInput) {
-        console.error('Search input not found, taking screenshot for debugging');
-        await this.page.screenshot({ path: 'debug_no_search_input.png', fullPage: true });
-        throw new Error('Search input not found after navigation');
-      }
-      
-      console.log('Navigation to Perplexity.ai completed successfully');
+
+      console.log('Navigation and readiness check completed successfully');
     } catch (error) {
       console.error('Navigation failed:', error);
       
@@ -441,18 +444,21 @@ class PerplexityMCPServer {
 
   private determineRecoveryLevel(error?: Error): number {
     if (!error) return 3; // Default to full restart if no error info
-    
+
     const errorMsg = error.message.toLowerCase();
-    if (errorMsg.includes('frame') || errorMsg.includes('detached')) {
-      return 2; // New page for frame issues
+    if (errorMsg.includes('frame') || errorMsg.includes('detached') || errorMsg.includes('session closed') || errorMsg.includes('target closed')) {
+      this.log('warn', 'Detached frame or closed session detected, escalating recovery to level 3 (full restart)');
+      return 3; // Escalate frame issues to full restart for better reliability
     }
     if (errorMsg.includes('timeout') || errorMsg.includes('navigation')) {
+      this.log('warn', 'Timeout or navigation error detected, setting recovery to level 1 (refresh)');
       return 1; // Refresh for timeouts/navigation
     }
+    this.log('warn', `Unknown error type ('${errorMsg.substring(0, 50)}...'), defaulting recovery to level 3`);
     return 3; // Full restart for other errors
   }
 
-  private async recoveryProcedure(error?: Error) {
+  private async recoveryProcedure(error?: Error): Promise<void> {
     const recoveryLevel = this.determineRecoveryLevel(error);
     const opId = ++this.operationCount;
     
@@ -461,38 +467,68 @@ class PerplexityMCPServer {
     try {
       switch(recoveryLevel) {
         case 1: // Page refresh
-          this.log('info', 'Attempting page refresh');
-          if (this.page) {
-            await this.page.reload({timeout: CONFIG.TIMEOUT_PROFILES.navigation});
+          this.log('info', 'Attempting page refresh (Recovery Level 1)');
+          if (this.page && !this.page.isClosed()) {
+            try {
+              await this.page.reload({ timeout: CONFIG.TIMEOUT_PROFILES.navigation });
+            } catch (reloadError) {
+              this.log('warn', `Page reload failed: ${reloadError instanceof Error ? reloadError.message : String(reloadError)}. Proceeding with recovery.`);
+            }
+          } else {
+             this.log('warn', 'Page was null or closed, cannot refresh. Proceeding with recovery.');
           }
           break;
-          
-        case 2: // New page
-          this.log('info', 'Creating new page instance');
+
+        case 2: // New page (Currently unused due to level escalation, kept for potential future use)
+          this.log('info', 'Creating new page instance (Recovery Level 2)');
           if (this.page) {
-            await this.page.close();
+             try {
+               if (!this.page.isClosed()) await this.page.close();
+             } catch (closeError) {
+               this.log('warn', `Ignoring error closing old page: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+             }
+             this.page = null;
           }
-          if (this.browser) {
-            this.page = await this.browser.newPage();
-            await this.setupBrowserEvasion();
-            await this.page.setViewport({ width: 1920, height: 1080 });
-            await this.page.setUserAgent(CONFIG.USER_AGENT);
+          if (this.browser && this.browser.isConnected()) {
+            try {
+              this.page = await this.browser.newPage();
+              await this.setupBrowserEvasion();
+              await this.page.setViewport({ width: 1920, height: 1080 });
+              await this.page.setUserAgent(CONFIG.USER_AGENT);
+            } catch (newPageError) {
+               this.log('error', `Failed to create new page: ${newPageError instanceof Error ? newPageError.message : String(newPageError)}. Escalating to full restart.`);
+               // Force level 3 if creating a new page fails
+               return await this.recoveryProcedure(new Error('Fallback recovery: new page failed'));
+            }
+          } else {
+             this.log('warn', 'Browser was null or disconnected, cannot create new page. Escalating to full restart.');
+             return await this.recoveryProcedure(new Error('Fallback recovery: browser disconnected'));
           }
           break;
-          
+
         case 3: // Full restart
         default:
-          this.log('info', 'Performing full browser restart');
+          this.log('info', 'Performing full browser restart (Recovery Level 3)');
           if (this.page) {
-            await this.page.close();
+            try {
+              if (!this.page.isClosed()) await this.page.close();
+            } catch (closeError) {
+              this.log('warn', `Ignoring error closing page during full restart: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+            }
           }
           if (this.browser) {
-            await this.browser.close();
+            try {
+              if (this.browser.isConnected()) await this.browser.close();
+            } catch (closeError) {
+              this.log('warn', `Ignoring error closing browser during full restart: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+            }
           }
           this.page = null;
           this.browser = null;
+          this.isInitializing = false; // Ensure flag is reset
+          this.log('info', 'Waiting before re-initializing browser...');
           await new Promise(resolve => setTimeout(resolve, CONFIG.RECOVERY_WAIT_TIME));
-          await this.initializeBrowser();
+          await this.initializeBrowser(); // This will set page and browser again
           break;
       }
       
@@ -573,17 +609,42 @@ class PerplexityMCPServer {
         const isTimeoutError = errorMsg.includes('timeout') || errorMsg.includes('Timed out');
         const isNavigationError = errorMsg.includes('navigation') || errorMsg.includes('Navigation');
         const isConnectionError = errorMsg.includes('net::') || errorMsg.includes('connection') || errorMsg.includes('network');
-        const isProtocolError = errorMsg.includes('Protocol error');
-        
+        const isProtocolError = errorMsg.includes('protocol error'); // Match case-insensitively
+        const isDetachedFrameError = errorMsg.includes('frame') || errorMsg.includes('detached') || errorMsg.includes('session closed') || errorMsg.includes('target closed');
+
+        // --- Prioritize Detached Frame / Protocol Errors ---
+        if (isDetachedFrameError || isProtocolError) {
+          console.error(`Detached frame or protocol error detected ('${errorMsg.substring(0, 100)}...'). Initiating immediate recovery.`);
+          await this.recoveryProcedure(lastError); // Pass error for context
+          // Wait a bit longer after this type of critical failure
+          const criticalWaitTime = 10000 + (Math.random() * 5000);
+          console.log(`Waiting ${Math.round(criticalWaitTime/1000)} seconds after critical error recovery...`);
+          await new Promise((resolve) => setTimeout(resolve, criticalWaitTime));
+          continue; // Skip other checks and proceed to next retry attempt
+        }
+
         // If CAPTCHA is detected, try to recover immediately
-        if (await this.checkForCaptcha()) {
+        // Check CAPTCHA only if the page seems valid
+        let captchaDetected = false;
+        if (this.page && !this.page.isClosed() && !this.page.mainFrame().isDetached()) {
+           try {
+             captchaDetected = await this.checkForCaptcha();
+           } catch (captchaCheckError) {
+             console.warn(`Error checking for CAPTCHA: ${captchaCheckError}`);
+             // Assume no CAPTCHA if check fails, but log it
+           }
+        } else {
+           console.warn('Skipping CAPTCHA check as page is invalid.');
+        }
+
+        if (captchaDetected) {
           console.error('CAPTCHA detected! Initiating recovery...');
           await this.recoveryProcedure();
           // Add a small delay after recovery
           await new Promise((resolve) => setTimeout(resolve, 3000));
           continue;
         }
-        
+
         // Handle timeout errors with progressive backoff
         if (isTimeoutError) {
           console.error(`Timeout detected during operation (${++consecutiveTimeouts} consecutive), attempting recovery...`);
@@ -780,7 +841,7 @@ class PerplexityMCPServer {
     // Set a global timeout for the entire operation with a much longer duration
     const operationTimeout = setTimeout(() => {
       console.error('Global operation timeout reached, initiating recovery...');
-      this.recoveryProcedure().catch(err => {
+      this.recoveryProcedure().catch((err: unknown) => {
         console.error('Recovery after timeout failed:', err);
       });
     }, CONFIG.PAGE_TIMEOUT - CONFIG.MCP_TIMEOUT_BUFFER);
