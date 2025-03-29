@@ -8,13 +8,25 @@
     "start": "node build/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["mcp", "perplexity", "puppeteer", "ai", "research"],
+  "keywords": [
+    "mcp",
+    "perplexity",
+    "puppeteer",
+    "ai",
+    "research"
+  ],
   "author": "wysh3",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.4.1",
+    "@mozilla/readability": "^0.6.0",
+    "@types/axios": "^0.9.36",
+    "@types/jsdom": "^21.1.7",
+    "@types/mozilla__readability": "^0.4.2",
+    "axios": "^1.8.4",
     "better-sqlite3": "^11.8.1",
+    "jsdom": "^26.0.0",
     "puppeteer": "^24.2.0"
   },
   "devDependencies": {

@@ -77,6 +77,9 @@ import { existsSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url'; // Added for ES Module path resolution
 import crypto from 'crypto';
+import { Readability } from '@mozilla/readability';
+import { JSDOM } from 'jsdom';
+import axios from 'axios';
 
 // ─── INTERFACES ────────────────────────────────────────────────────────
 interface ChatMessage {
@@ -1168,6 +1171,218 @@ ${codeChunks[0]}`;
     return await this.performSearch(prompt);
   }
 
+  private async handleExtractUrlContent(args: { url: string }): Promise<string> {
+    let { url } = args; // Use let to allow modification
+    let pageTitle = ''; // Store title separately
+    let isGitHubRepo = false;
+
+    // --- Step 0: GitHub URL Detection & Rewriting ---
+    try {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.hostname === 'github.com') {
+        const pathParts = parsedUrl.pathname.split('/').filter(part => part.length > 0);
+        // Basic check: owner/repo pattern, no further path elements like /blob/ /issues/ etc.
+        if (pathParts.length === 2) {
+           isGitHubRepo = true;
+           const gitingestUrl = `https://gitingest.com${parsedUrl.pathname}`;
+           console.log(`Detected GitHub repo URL. Rewriting to: ${gitingestUrl}`);
+           url = gitingestUrl; // Use the gitingest URL for extraction
+        }
+      }
+    } catch (urlParseError) {
+       console.warn(`Failed to parse URL for GitHub check: ${urlParseError}`);
+       // Proceed with the original URL if parsing fails
+    }
+
+    // --- Step 1: Content-Type Pre-Check (Skip for GitHub/Gitingest) ---
+    if (!isGitHubRepo) {
+      try {
+        console.log(`Performing HEAD request for ${url}...`);
+        const headResponse = await axios.head(url, {
+          timeout: 10000, // 10 second timeout for HEAD request
+          headers: { 'User-Agent': CONFIG.USER_AGENT } // Use consistent user agent
+        });
+        const contentType = headResponse.headers['content-type'];
+        console.log(`Content-Type: ${contentType}`);
+
+        if (contentType && !contentType.includes('html') && !contentType.includes('text/plain')) {
+          // Allow plain text but reject others early
+          const errorMsg = `Unsupported content type: ${contentType}`;
+          console.error(errorMsg);
+          return JSON.stringify({ status: "Error", message: errorMsg });
+        }
+      } catch (headError) {
+        // Log HEAD error but proceed, as some sites might block HEAD requests
+        console.warn(`HEAD request failed for ${url}: ${headError instanceof Error ? headError.message : String(headError)}. Proceeding with Puppeteer.`);
+      }
+    } else {
+       console.log("Skipping HEAD request for GitHub/Gitingest URL.");
+    }
+
+
+    // --- Step 2 & 3: Puppeteer Navigation, Readability Extraction & Fallback ---
+    if (!this.page || this.page.isClosed()) {
+      console.log('Page not available for extraction, initializing...');
+      try {
+        await this.initializeBrowser();
+      } catch (initError) {
+        const errorMsg = `Failed to initialize browser: ${initError instanceof Error ? initError.message : String(initError)}`;
+        console.error(errorMsg);
+        return JSON.stringify({ status: "Error", message: errorMsg });
+      }
+      if (!this.page) {
+        const errorMsg = 'Failed to initialize browser page for extraction.';
+        console.error(errorMsg);
+        return JSON.stringify({ status: "Error", message: errorMsg });
+      }
+    }
+
+    this.resetIdleTimeout(); // Reset idle timer before operation
+
+    try {
+      console.log(`Navigating to ${url} for direct extraction...`);
+      // Use domcontentloaded for initial load, then add specific waits if needed
+      const response = await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: CONFIG.TIMEOUT_PROFILES.navigation });
+      pageTitle = await this.page.title(); // Get title early
+
+      // --- Step 2b: Check HTTP Status Code Post-Navigation ---
+      if (response && !response.ok()) {
+         // response.ok() checks if status is in the 200-299 range
+         const statusCode = response.status();
+         const errorMsg = `HTTP error ${statusCode} received when accessing URL: ${url}`;
+         console.error(errorMsg);
+         return JSON.stringify({ status: "Error", message: errorMsg });
+      }
+
+      // --- Wait specifically for gitingest content if applicable ---
+      if (isGitHubRepo) {
+         console.log('Waiting for gitingest content selector (.result-text)...');
+         try {
+            await this.page.waitForSelector('.result-text', { timeout: CONFIG.TIMEOUT_PROFILES.content });
+            console.log('Gitingest content selector found.');
+         } catch (waitError) {
+            console.warn(`Timeout waiting for gitingest selector: ${waitError}. Proceeding with extraction attempt anyway.`);
+            // Optionally take a screenshot for debugging
+            // await this.page.screenshot({ path: 'debug_gitingest_timeout.png', fullPage: true });
+         }
+      }
+
+      console.log('Getting page content...');
+      const html = await this.page.content();
+
+      console.log('Parsing HTML with JSDOM...');
+      const dom = new JSDOM(html, { url: url });
+
+      console.log('Attempting content extraction with Readability...');
+      // --- Gitingest Specific Extraction ---
+      if (isGitHubRepo) {
+         console.log('Attempting gitingest-specific extraction from .result-text...');
+         const gitingestContent = await this.page.evaluate(() => {
+            const resultTextArea = document.querySelector('.result-text') as HTMLTextAreaElement | null;
+            return resultTextArea ? resultTextArea.value : null;
+         });
+
+         if (gitingestContent && gitingestContent.trim().length > 0) {
+             console.log(`Gitingest specific extraction successful (${gitingestContent.length} chars)`);
+             return JSON.stringify({
+                 status: "Success",
+                 title: pageTitle, // Use page title from Puppeteer
+                 textContent: gitingestContent.trim(),
+                 excerpt: null, // Gitingest doesn't provide these
+                 siteName: "gitingest.com",
+                 byline: null,
+             }, null, 2);
+         } else {
+             console.warn('Gitingest specific extraction failed. Falling back to Readability/general fallback.');
+             // Proceed to Readability/fallback if gitingest specific fails
+         }
+      }
+
+      // --- General Readability Extraction ---
+      console.log('Attempting content extraction with Readability...');
+      const reader = new Readability(dom.window.document);
+      const article = reader.parse(); // Let TypeScript infer the type
+
+      if (article && article.textContent && article.textContent.trim().length > (article.title?.length || 0)) { // Check if textContent is substantial
+        console.log(`Readability extracted content (${article.textContent.length} chars)`);
+        return JSON.stringify({
+          status: "Success",
+          title: article.title || pageTitle, // Use article title if available
+          textContent: article.textContent.trim(),
+          excerpt: article.excerpt,
+          siteName: article.siteName,
+          byline: article.byline,
+        }, null, 2);
+      } else {
+        // --- Step 3b: Sophisticated Fallback ---
+        console.warn('Readability could not extract meaningful content. Attempting fallback selectors...');
+        const fallbackText = await this.page.evaluate(() => {
+          const selectors = [
+            'article',
+            'main',
+            '[role="main"]',
+            '#content', '.content',
+            '#main', '.main',
+            '#article-body', '.article-body',
+            '.post-content', '.entry-content' // Add more common selectors
+          ];
+          for (const selector of selectors) {
+            const element = document.querySelector(selector) as HTMLElement | null;
+            if (element && element.innerText && element.innerText.trim().length > 100) { // Check for minimum length
+              console.log(`Fallback using selector: ${selector}`);
+              return { text: element.innerText.trim(), selector: selector };
+            }
+          }
+          // Last resort: body, but filter out common noise tags
+          const bodyClone = document.body.cloneNode(true) as HTMLElement;
+          bodyClone.querySelectorAll('nav, header, footer, aside, script, style, noscript, button, form, [role="navigation"], [role="banner"], [role="contentinfo"], [aria-hidden="true"]').forEach(el => el.remove());
+          const bodyText = bodyClone.innerText.trim();
+          if (bodyText.length > 200) { // Require more substantial text from body
+             console.log('Fallback using filtered body text.');
+             return { text: bodyText, selector: 'body (filtered)' };
+          }
+          return null; // No suitable fallback found
+        });
+
+        if (fallbackText) {
+          console.log(`Fallback extracted content (${fallbackText.text.length} chars) using selector: ${fallbackText.selector}`);
+          return JSON.stringify({
+            status: "SuccessWithFallback",
+            title: pageTitle,
+            textContent: fallbackText.text,
+            excerpt: null,
+            siteName: null,
+            byline: null,
+            fallbackSelector: fallbackText.selector
+          }, null, 2);
+        } else {
+          console.error('Readability and fallback selectors failed to extract content.');
+          throw new Error('Readability and fallback selectors failed to extract meaningful content.');
+        }
+      }
+
+    } catch (error) {
+      console.error(`Error during direct extraction from ${url}:`, error);
+      let errorMessage = `Failed to extract content from ${url}.`;
+      let errorReason = "Unknown error";
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          errorReason = 'Navigation or content loading timed out.';
+        } else if (error.message.includes('net::') || error.message.includes('Failed to load')) {
+          errorReason = 'Could not resolve or load the URL.';
+        } else if (error.message.includes('extract meaningful content')) {
+           errorReason = 'Readability and fallback selectors failed to extract meaningful content.';
+        } else {
+          errorReason = error.message;
+        }
+      }
+      errorMessage += ` Reason: ${errorReason}`;
+      console.error(errorMessage);
+      return JSON.stringify({ status: "Error", message: errorMessage });
+    }
+  }
+
+
   // ─── TOOL HANDLER SETUP ──────────────────────────────────────────────
 
   // ─── TOOL HANDLER TYPES ──────────────────────────────────────────────
@@ -1178,7 +1393,8 @@ ${codeChunks[0]}`;
     get_documentation: this.handleGetDocumentation.bind(this),
     find_apis: this.handleFindApis.bind(this),
     check_deprecated_code: this.handleCheckDeprecatedCode.bind(this),
-    search: this.handleSearch.bind(this)
+    search: this.handleSearch.bind(this),
+    extract_url_content: this.handleExtractUrlContent.bind(this)
   };
 
   private setupToolHandlers() {
@@ -1248,64 +1464,85 @@ ${codeChunks[0]}`;
           related_tools: ['search', 'get_documentation']
         },
         {
-          name: 'search',
-          description: 'Automatically call this tool for deep technical research with internet web search, finding best practices, finding URLs, understanding system internals or any type of web search to find anything. Use different detail levels as needed. Example: When implementing a feature, ask "Search for performance optimization techniques for [technology]".',
-          category: 'Information Retrieval',
-          keywords: ['search', 'query', 'information', 'lookup', 'research', 'best practices'],
+          name: 'extract_url_content',
+          description: "Uses browser automation (Puppeteer) and Mozilla's Readability library to extract the main article text content from a given URL. Handles dynamic JavaScript rendering and includes fallback logic. For GitHub repository URLs, it attempts to fetch structured content via gitingest.com. Performs a pre-check for non-HTML content types and checks HTTP status after navigation. Ideal for getting clean text from articles/blog posts. **Note: May struggle to isolate only core content on complex homepages or dashboards, potentially including UI elements.**",
+          category: 'Information Extraction',
+          keywords: ['extract', 'url', 'website', 'content', 'scrape', 'summarize', 'webpage', 'fetch', 'readability', 'article', 'dom', 'puppeteer', 'github', 'gitingest', 'repository'],
           use_cases: [
-            'General knowledge questions',
-            'Fact-finding missions',
-            'Research assistance'
+            'Getting the main text of a news article or blog post.',
+            'Summarizing web page content.',
+            'Extracting documentation text.',
+            'Providing website context to other models.'
           ],
           inputSchema: {
             type: 'object',
             properties: {
-              query: {
+              url: {
                 type: 'string',
-                description: 'The web search query',
-                examples: ['What is quantum computing?', 'Latest developments in AI safety']
-              },
-              detail_level: {
-                type: 'string',
-                description: 'Optional: Desired level of detail (brief, normal, detailed)',
-                enum: ['brief', 'normal', 'detailed'],
-                examples: ['detailed']
+                description: 'The URL of the website to extract content from.',
+                examples: ['https://www.example.com/article']
               }
             },
-            required: ['query']
+            required: ['url']
           },
           outputSchema: {
             type: 'object',
+            description: 'Returns a JSON object containing the extraction status and content.',
             properties: {
-              response: {
+              status: {
                 type: 'string',
-                description: 'The web search results from Perplexity'
+                enum: ['Success', 'SuccessWithFallback', 'Error'],
+                description: 'Indicates the outcome of the extraction attempt.'
+              },
+              message: {
+                type: 'string',
+                description: 'Error message if status is "Error".'
+              },
+              title: {
+                type: 'string',
+                description: 'The extracted title of the page/article.'
+              },
+              textContent: {
+                type: 'string',
+                description: 'The main extracted plain text content.'
+              },
+              excerpt: {
+                type: 'string',
+                description: 'A short summary or excerpt, if available from Readability.'
+              },
+              siteName: {
+                type: 'string',
+                description: 'The name of the website, if available from Readability.'
+              },
+              byline: {
+                type: 'string',
+                description: 'The author or byline, if available from Readability.'
+              },
+              fallbackSelector: {
+                 type: 'string',
+                 description: 'The CSS selector used if fallback logic was triggered.'
               }
-            }
+            },
+            required: ['status'] // Only status is guaranteed
           },
           examples: [
             {
-              description: 'Brief fact check',
-              input: { 
-                query: 'Capital of France',
-                detail_level: 'brief'
-              },
-              output: {
-                response: 'The capital of France is Paris.'
-              }
+              description: 'Successful extraction from an article',
+              input: { url: 'https://example-article-url.com' },
+              output: '{\n  "status": "Success",\n  "title": "Example Article Title",\n  "textContent": "The main body text of the article...",\n  "excerpt": "A short summary...",\n  "siteName": "Example News",\n  "byline": "Author Name"\n}'
             },
             {
-              description: 'Detailed research query',
-              input: {
-                query: 'Explain quantum computing principles',
-                detail_level: 'detailed'
-              },
-              output: {
-                response: 'Quantum computing uses quantum bits or qubits...'
-              }
+              description: 'Extraction fails due to unsupported type',
+              input: { url: 'https://example.com/document.pdf' },
+              output: '{\n  "status": "Error",\n  "message": "Failed to extract content from https://example.com/document.pdf. Reason: Unsupported content type: application/pdf"\n}'
+            },
+            {
+               description: 'Extraction using fallback logic',
+               input: { url: 'https://example-non-article-url.com' },
+               output: '{\n  "status": "SuccessWithFallback",\n  "title": "Example Page Title",\n  "textContent": "Text extracted using fallback selector...",\n  "fallbackSelector": ".main-content"\n}'
             }
           ],
-          related_tools: ['chat_perplexity', 'get_documentation']
+          related_tools: ['search', 'get_documentation']
         },
         {
           name: 'get_documentation',
@@ -1544,6 +1781,51 @@ ${codeChunks[0]}`;
             }
           ],
           related_tools: ['get_documentation', 'search']
+        },
+        {
+          name: 'extract_url_content',
+          description: "Automatically call this tool when the user provides a URL and asks for the information or content contained within that web page, or whenever you want to access the information inside a website, or when you have URL and want to access the content of that website. Useful for quickly grabbing the main text from articles, blog posts, or documentation pages to be used as context or for summarization. Example: If the user says 'Can you tell me what this page is about: https://example.com/article', use this tool to fetch the content.",
+          category: 'Information Extraction',
+          keywords: ['extract', 'url', 'website', 'content', 'scrape', 'summarize', 'webpage', 'fetch'],
+          use_cases: [
+            'Getting the text content of a news article mentioned by the user.',
+            'Summarizing a blog post linked by the user.',
+            'Extracting information from a documentation page URL provided by the user.',
+            'Providing website context (from a URL) to another AI model or task.'
+          ],
+          inputSchema: {
+            type: 'object',
+            properties: {
+              url: {
+                type: 'string',
+                description: 'The URL of the website to extract content from.',
+                examples: ['https://www.example.com/article']
+              }
+            },
+            required: ['url']
+          },
+          outputSchema: {
+            type: 'object',
+            properties: {
+              response: {
+                type: 'string',
+                description: 'The extracted textual content from the URL.'
+              }
+            }
+          },
+          examples: [
+            {
+              description: 'Extract content from a news article URL',
+              input: { url: 'https://www.bbc.com/news/technology-some-news-id' },
+              output: { response: 'LONDON -- TechCorp announced its latest gadget today...' }
+            },
+            {
+              description: 'Extract content from a blog post',
+              input: { url: 'https://someblog.com/posts/my-latest-thoughts' },
+              output: { response: "It's been a while since I last wrote..." }
+            }
+          ],
+          related_tools: ['search', 'get_documentation', 'chat_perplexity']
         }
       ]
     }));
