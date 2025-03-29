@@ -1125,9 +1125,9 @@ ${codeChunks[0]}`;
       tools: [
         {
           name: 'chat_perplexity',
-          description: 'Maintains ongoing conversations with Perplexity AI using a persistent chat history. Starts new chats or continues existing ones with full context. Returns a stringified JSON object containing chat_id and response.',
+          description: 'Automatically call this tool for expert deep technical advice, brainstorming, or complex debugging. Maintains conversation context. Ideal for planning phases or when stuck. Example auto-use: When planning a shopping site, ask "Get recommendations for e-commerce frameworks".',
           category: 'Conversation',
-          keywords: ['chat', 'conversation', 'dialog', 'discussion'],
+          keywords: ['chat', 'conversation', 'dialog', 'discussion', 'advice', 'brainstorm', 'debug'],
           use_cases: [
             'Continuing multi-turn conversations',
             'Context-aware question answering',
@@ -1188,9 +1188,9 @@ ${codeChunks[0]}`;
         },
         {
           name: 'search',
-          description: 'Perform a search query on Perplexity.ai with an optional detail level.',
+          description: 'Automatically call this tool for deep technical research, finding best practices, or understanding system internals. Use different detail levels as needed. Example: When implementing a feature, ask "Search for performance optimization techniques for [technology]".',
           category: 'Information Retrieval',
-          keywords: ['search', 'query', 'information', 'lookup'],
+          keywords: ['search', 'query', 'information', 'lookup', 'research', 'best practices'],
           use_cases: [
             'General knowledge questions',
             'Fact-finding missions',
@@ -1248,9 +1248,9 @@ ${codeChunks[0]}`;
         },
         {
           name: 'get_documentation',
-          description: 'Get documentation and usage examples for a specific technology, library, or API.',
+          description: 'Automatically call this tool when working with unfamiliar APIs/libraries, needing usage examples, or checking version specifics. Example: When adding a payment gateway, ask "Get Stripe API documentation for creating charges".',
           category: 'Technical Reference',
-          keywords: ['docs', 'documentation', 'api', 'reference', 'examples'],
+          keywords: ['docs', 'documentation', 'api', 'reference', 'examples', 'usage', 'version'],
           use_cases: [
             'Learning new technologies',
             'API integration',
@@ -1318,9 +1318,9 @@ ${codeChunks[0]}`;
         },
         {
           name: 'find_apis',
-          description: 'Find and evaluate APIs that could be integrated into a project.',
+          description: 'Automatically call this tool when needing external services or data (like images, product info, etc.). Compares options based on requirements. Example: When building a shopping site, ask "Find product image APIs with free tiers".',
           category: 'API Discovery',
-          keywords: ['api', 'integration', 'services', 'endpoints', 'sdk'],
+          keywords: ['api', 'integration', 'services', 'endpoints', 'sdk', 'data', 'external'],
           use_cases: [
             'Finding APIs for specific functionality',
             'Comparing API alternatives',
@@ -1409,9 +1409,9 @@ ${codeChunks[0]}`;
         },
         {
           name: 'check_deprecated_code',
-          description: 'Check if code or dependencies might be using deprecated features.',
+          description: 'Automatically call this tool when reviewing legacy code, planning upgrades, or encountering warnings. Helps identify technical debt. Example: During code reviews or before upgrading dependencies.',
           category: 'Code Analysis',
-          keywords: ['deprecation', 'migration', 'upgrade', 'compatibility', 'linting'],
+          keywords: ['deprecation', 'migration', 'upgrade', 'compatibility', 'linting', 'legacy', 'debt'],
           use_cases: [
             'Preparing for technology upgrades',
             'Maintaining backward compatibility',
