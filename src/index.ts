@@ -1402,7 +1402,7 @@ ${codeChunks[0]}`;
       tools: [
         {
           name: 'chat_perplexity',
-          description: 'Automatically call this tool for expert to have a continuous conversation for brainstorming or whenever you want to ask multiple questions but with same context plus it has web access for real time information. Maintains conversation context. Ideal for planning phases or when stuck. Example auto-use: When planning a shopping site, ask "Get recommendations for e-commerce frameworks".',
+          description: 'Automatically call this tool for interactive, conversational queries. This tool leverages Perplexitys web search capabilities to provide real-time information and maintains conversation history using an optional chat ID for contextual follow-ups.',
           category: 'Conversation',
           keywords: ['chat', 'conversation', 'dialog', 'discussion', 'advice', 'brainstorm', 'debug'],
           use_cases: [
