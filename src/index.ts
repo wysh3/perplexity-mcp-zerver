@@ -1783,49 +1783,55 @@ ${codeChunks[0]}`;
           related_tools: ['get_documentation', 'search']
         },
         {
-          name: 'extract_url_content',
-          description: "Automatically call this tool when the user provides a URL and asks for the information or content contained within that web page, or whenever you want to access the information inside a website, or when you have URL and want to access the content of that website. Useful for quickly grabbing the main text from articles, blog posts, or documentation pages to be used as context or for summarization. Example: If the user says 'Can you tell me what this page is about: https://example.com/article', use this tool to fetch the content.",
-          category: 'Information Extraction',
-          keywords: ['extract', 'url', 'website', 'content', 'scrape', 'summarize', 'webpage', 'fetch'],
+          name: 'search',
+          description: 'Performs a web search using Perplexity AI based on the provided query and desired detail level. Useful for general knowledge questions, finding information, or getting different perspectives.',
+          category: 'Web Search',
+          keywords: ['search', 'web', 'internet', 'query', 'find', 'information', 'lookup', 'perplexity'],
           use_cases: [
-            'Getting the text content of a news article mentioned by the user.',
-            'Summarizing a blog post linked by the user.',
-            'Extracting information from a documentation page URL provided by the user.',
-            'Providing website context (from a URL) to another AI model or task.'
+            'Answering general knowledge questions.',
+            'Finding specific information online.',
+            'Getting quick summaries or detailed explanations.',
+            'Researching topics.'
           ],
           inputSchema: {
             type: 'object',
             properties: {
-              url: {
+              query: {
                 type: 'string',
-                description: 'The URL of the website to extract content from.',
-                examples: ['https://www.example.com/article']
+                description: 'The search query or question to ask Perplexity.',
+                examples: ['What is the capital of France?', 'Explain black holes']
+              },
+              detail_level: {
+                type: 'string',
+                enum: ['brief', 'normal', 'detailed'],
+                description: 'Optional: Controls the level of detail in the response (default: normal).',
+                examples: ['brief', 'detailed']
               }
             },
-            required: ['url']
+            required: ['query']
           },
           outputSchema: {
             type: 'object',
             properties: {
               response: {
                 type: 'string',
-                description: 'The extracted textual content from the URL.'
+                description: 'The search result text provided by Perplexity AI.'
               }
             }
           },
           examples: [
             {
-              description: 'Extract content from a news article URL',
-              input: { url: 'https://www.bbc.com/news/technology-some-news-id' },
-              output: { response: 'LONDON -- TechCorp announced its latest gadget today...' }
+              description: 'Simple search query',
+              input: { query: 'What is the weather in London?' },
+              output: { response: 'The weather in London is currently...' }
             },
             {
-              description: 'Extract content from a blog post',
-              input: { url: 'https://someblog.com/posts/my-latest-thoughts' },
-              output: { response: "It's been a while since I last wrote..." }
+              description: 'Detailed search query',
+              input: { query: 'Explain the theory of relativity', detail_level: 'detailed' },
+              output: { response: 'Albert Einstein\'s theory of relativity includes Special Relativity and General Relativity...' }
             }
           ],
-          related_tools: ['search', 'get_documentation', 'chat_perplexity']
+          related_tools: ['chat_perplexity', 'get_documentation', 'find_apis']
         }
       ]
     }));
