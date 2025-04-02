@@ -79,12 +79,29 @@ import { fileURLToPath } from 'url'; // Added for ES Module path resolution
 import crypto from 'crypto';
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
-import axios from 'axios';
+import axios from 'axios'; // Reverted: Remove explicit isAxiosError import
 
 // ─── INTERFACES ────────────────────────────────────────────────────────
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+// --- Recursive Content Extraction Types ---
+interface PageContentResult {
+  url: string;
+  title?: string | null;
+  textContent?: string | null;
+  error?: string | null;
+}
+
+interface RecursiveFetchResult {
+  status: 'Success' | 'SuccessWithPartial' | 'Error';
+  message?: string;
+  rootUrl: string;
+  explorationDepth: number;
+  pagesExplored: number;
+  content: PageContentResult[];
 }
 
 // ─── CONFIGURATION ─────────────────────────────────────────────────────
@@ -1070,7 +1087,9 @@ class PerplexityMCPServer {
 7. Version compatibility information
 8. Links to official documentation
 9. Community resources (forums, chat channels)
-10. Related tools/libraries that work well with it`;
+10. Related tools/libraries that work well with it
+
+Crucially, also provide the main official URL(s) for this documentation on separate lines, prefixed with 'Official URL(s):'.`;
     return await this.performSearch(prompt);
   }
 
@@ -1171,56 +1190,54 @@ ${codeChunks[0]}`;
     return await this.performSearch(prompt);
   }
 
-  private async handleExtractUrlContent(args: { url: string }): Promise<string> {
-    let { url } = args; // Use let to allow modification
-    let pageTitle = ''; // Store title separately
+  // --- Single Page Extraction Helper ---
+  private async _fetchSinglePageContent(url: string): Promise<string> {
+    // This function encapsulates the original logic of handleExtractUrlContent
+    let originalUrl = url; // Keep original for potential Gitingest rewrite
+    let pageTitle = '';
     let isGitHubRepo = false;
 
-    // --- Step 0: GitHub URL Detection & Rewriting ---
+    // --- GitHub URL Detection & Rewriting ---
     try {
-      const parsedUrl = new URL(url);
+      const parsedUrl = new URL(originalUrl);
       if (parsedUrl.hostname === 'github.com') {
         const pathParts = parsedUrl.pathname.split('/').filter(part => part.length > 0);
-        // Basic check: owner/repo pattern, no further path elements like /blob/ /issues/ etc.
         if (pathParts.length === 2) {
-           isGitHubRepo = true;
-           const gitingestUrl = `https://gitingest.com${parsedUrl.pathname}`;
-           console.log(`Detected GitHub repo URL. Rewriting to: ${gitingestUrl}`);
-           url = gitingestUrl; // Use the gitingest URL for extraction
+          isGitHubRepo = true;
+          const gitingestUrl = `https://gitingest.com${parsedUrl.pathname}`;
+          console.log(`Detected GitHub repo URL. Rewriting to: ${gitingestUrl}`);
+          url = gitingestUrl; // Use the gitingest URL for extraction
         }
       }
     } catch (urlParseError) {
-       console.warn(`Failed to parse URL for GitHub check: ${urlParseError}`);
-       // Proceed with the original URL if parsing fails
+      console.warn(`Failed to parse URL for GitHub check: ${urlParseError}`);
+      // Proceed with the potentially rewritten URL if parsing fails
     }
 
-    // --- Step 1: Content-Type Pre-Check (Skip for GitHub/Gitingest) ---
+    // --- Content-Type Pre-Check (Skip for GitHub/Gitingest) ---
     if (!isGitHubRepo) {
       try {
         console.log(`Performing HEAD request for ${url}...`);
         const headResponse = await axios.head(url, {
-          timeout: 10000, // 10 second timeout for HEAD request
-          headers: { 'User-Agent': CONFIG.USER_AGENT } // Use consistent user agent
+          timeout: 10000,
+          headers: { 'User-Agent': CONFIG.USER_AGENT }
         });
         const contentType = headResponse.headers['content-type'];
         console.log(`Content-Type: ${contentType}`);
-
         if (contentType && !contentType.includes('html') && !contentType.includes('text/plain')) {
-          // Allow plain text but reject others early
           const errorMsg = `Unsupported content type: ${contentType}`;
           console.error(errorMsg);
           return JSON.stringify({ status: "Error", message: errorMsg });
         }
       } catch (headError) {
-        // Log HEAD error but proceed, as some sites might block HEAD requests
         console.warn(`HEAD request failed for ${url}: ${headError instanceof Error ? headError.message : String(headError)}. Proceeding with Puppeteer.`);
       }
     } else {
-       console.log("Skipping HEAD request for GitHub/Gitingest URL.");
+      console.log("Skipping HEAD request for GitHub/Gitingest URL.");
     }
 
-
-    // --- Step 2 & 3: Puppeteer Navigation, Readability Extraction & Fallback ---
+    // --- Puppeteer Navigation, Readability Extraction & Fallback ---
+    // Ensure browser/page is initialized
     if (!this.page || this.page.isClosed()) {
       console.log('Page not available for extraction, initializing...');
       try {
@@ -1237,148 +1254,358 @@ ${codeChunks[0]}`;
       }
     }
 
-    this.resetIdleTimeout(); // Reset idle timer before operation
+    this.resetIdleTimeout();
 
     try {
-      console.log(`Navigating to ${url} for direct extraction...`);
-      // Use domcontentloaded for initial load, then add specific waits if needed
+      console.log(`Navigating to ${url} for single page extraction...`);
       const response = await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: CONFIG.TIMEOUT_PROFILES.navigation });
-      pageTitle = await this.page.title(); // Get title early
+      pageTitle = await this.page.title();
 
-      // --- Step 2b: Check HTTP Status Code Post-Navigation ---
       if (response && !response.ok()) {
-         // response.ok() checks if status is in the 200-299 range
-         const statusCode = response.status();
-         const errorMsg = `HTTP error ${statusCode} received when accessing URL: ${url}`;
-         console.error(errorMsg);
-         return JSON.stringify({ status: "Error", message: errorMsg });
+        const statusCode = response.status();
+        const errorMsg = `HTTP error ${statusCode} received when accessing URL: ${url}`;
+        console.error(errorMsg);
+        return JSON.stringify({ status: "Error", message: errorMsg });
       }
 
-      // --- Wait specifically for gitingest content if applicable ---
       if (isGitHubRepo) {
-         console.log('Waiting for gitingest content selector (.result-text)...');
-         try {
-            await this.page.waitForSelector('.result-text', { timeout: CONFIG.TIMEOUT_PROFILES.content });
-            console.log('Gitingest content selector found.');
-         } catch (waitError) {
-            console.warn(`Timeout waiting for gitingest selector: ${waitError}. Proceeding with extraction attempt anyway.`);
-            // Optionally take a screenshot for debugging
-            // await this.page.screenshot({ path: 'debug_gitingest_timeout.png', fullPage: true });
-         }
-      }
-
-      console.log('Getting page content...');
-      const html = await this.page.content();
-
-      console.log('Parsing HTML with JSDOM...');
-      const dom = new JSDOM(html, { url: url });
-
-      console.log('Attempting content extraction with Readability...');
-      // --- Gitingest Specific Extraction ---
-      if (isGitHubRepo) {
-         console.log('Attempting gitingest-specific extraction from .result-text...');
-         const gitingestContent = await this.page.evaluate(() => {
-            const resultTextArea = document.querySelector('.result-text') as HTMLTextAreaElement | null;
-            return resultTextArea ? resultTextArea.value : null;
-         });
-
-         if (gitingestContent && gitingestContent.trim().length > 0) {
-             console.log(`Gitingest specific extraction successful (${gitingestContent.length} chars)`);
-             return JSON.stringify({
-                 status: "Success",
-                 title: pageTitle, // Use page title from Puppeteer
-                 textContent: gitingestContent.trim(),
-                 excerpt: null, // Gitingest doesn't provide these
-                 siteName: "gitingest.com",
-                 byline: null,
-             }, null, 2);
-         } else {
-             console.warn('Gitingest specific extraction failed. Falling back to Readability/general fallback.');
-             // Proceed to Readability/fallback if gitingest specific fails
-         }
-      }
-
-      // --- General Readability Extraction ---
-      console.log('Attempting content extraction with Readability...');
-      const reader = new Readability(dom.window.document);
-      const article = reader.parse(); // Let TypeScript infer the type
-
-      if (article && article.textContent && article.textContent.trim().length > (article.title?.length || 0)) { // Check if textContent is substantial
-        console.log(`Readability extracted content (${article.textContent.length} chars)`);
-        return JSON.stringify({
-          status: "Success",
-          title: article.title || pageTitle, // Use article title if available
-          textContent: article.textContent.trim(),
-          excerpt: article.excerpt,
-          siteName: article.siteName,
-          byline: article.byline,
-        }, null, 2);
-      } else {
-        // --- Step 3b: Sophisticated Fallback ---
-        console.warn('Readability could not extract meaningful content. Attempting fallback selectors...');
-        const fallbackText = await this.page.evaluate(() => {
-          const selectors = [
-            'article',
-            'main',
-            '[role="main"]',
-            '#content', '.content',
-            '#main', '.main',
-            '#article-body', '.article-body',
-            '.post-content', '.entry-content' // Add more common selectors
-          ];
-          for (const selector of selectors) {
-            const element = document.querySelector(selector) as HTMLElement | null;
-            if (element && element.innerText && element.innerText.trim().length > 100) { // Check for minimum length
-              console.log(`Fallback using selector: ${selector}`);
-              return { text: element.innerText.trim(), selector: selector };
-            }
-          }
-          // Last resort: body, but filter out common noise tags
-          const bodyClone = document.body.cloneNode(true) as HTMLElement;
-          bodyClone.querySelectorAll('nav, header, footer, aside, script, style, noscript, button, form, [role="navigation"], [role="banner"], [role="contentinfo"], [aria-hidden="true"]').forEach(el => el.remove());
-          const bodyText = bodyClone.innerText.trim();
-          if (bodyText.length > 200) { // Require more substantial text from body
-             console.log('Fallback using filtered body text.');
-             return { text: bodyText, selector: 'body (filtered)' };
-          }
-          return null; // No suitable fallback found
-        });
-
-        if (fallbackText) {
-          console.log(`Fallback extracted content (${fallbackText.text.length} chars) using selector: ${fallbackText.selector}`);
-          return JSON.stringify({
-            status: "SuccessWithFallback",
-            title: pageTitle,
-            textContent: fallbackText.text,
-            excerpt: null,
-            siteName: null,
-            byline: null,
-            fallbackSelector: fallbackText.selector
-          }, null, 2);
-        } else {
-          console.error('Readability and fallback selectors failed to extract content.');
-          throw new Error('Readability and fallback selectors failed to extract meaningful content.');
+        console.log('Waiting for gitingest content selector (.result-text)...');
+        try {
+          await this.page.waitForSelector('.result-text', { timeout: CONFIG.TIMEOUT_PROFILES.content });
+          console.log('Gitingest content selector found.');
+        } catch (waitError) {
+          console.warn(`Timeout waiting for gitingest selector: ${waitError}. Proceeding anyway.`);
         }
       }
 
+      const html = await this.page.content();
+      const dom = new JSDOM(html, { url: url });
+
+      // Gitingest Specific Extraction
+      if (isGitHubRepo) {
+        const gitingestContent = await this.page.evaluate(() => {
+          const resultTextArea = document.querySelector('.result-text') as HTMLTextAreaElement | null;
+          return resultTextArea ? resultTextArea.value : null;
+        });
+        if (gitingestContent && gitingestContent.trim().length > 0) {
+          console.log(`Gitingest specific extraction successful (${gitingestContent.length} chars)`);
+          return JSON.stringify({
+            status: "Success", title: pageTitle, textContent: gitingestContent.trim(),
+            excerpt: null, siteName: "gitingest.com", byline: null,
+          }, null, 2);
+        } else {
+          console.warn('Gitingest specific extraction failed. Falling back.');
+        }
+      }
+
+      // General Readability Extraction
+      const reader = new Readability(dom.window.document);
+      const article = reader.parse();
+      if (article && article.textContent && article.textContent.trim().length > (article.title?.length || 0)) {
+        console.log(`Readability extracted content (${article.textContent.length} chars)`);
+        return JSON.stringify({
+          status: "Success", title: article.title || pageTitle, textContent: article.textContent.trim(),
+          excerpt: article.excerpt, siteName: article.siteName, byline: article.byline,
+        }, null, 2);
+      }
+
+      // Sophisticated Fallback
+      console.warn('Readability failed. Attempting fallback selectors...');
+      const fallbackText = await this.page.evaluate(() => {
+        const selectors = [
+          'article', 'main', '[role="main"]', '#content', '.content', '#main', '.main',
+          '#article-body', '.article-body', '.post-content', '.entry-content'
+        ];
+        for (const selector of selectors) {
+          const element = document.querySelector(selector) as HTMLElement | null;
+          if (element && element.innerText && element.innerText.trim().length > 100) {
+            console.log(`Fallback using selector: ${selector}`);
+            return { text: element.innerText.trim(), selector: selector };
+          }
+        }
+        const bodyClone = document.body.cloneNode(true) as HTMLElement;
+        bodyClone.querySelectorAll('nav, header, footer, aside, script, style, noscript, button, form, [role="navigation"], [role="banner"], [role="contentinfo"], [aria-hidden="true"]').forEach(el => el.remove());
+        const bodyText = bodyClone.innerText.trim();
+        if (bodyText.length > 200) {
+          console.log('Fallback using filtered body text.');
+          return { text: bodyText, selector: 'body (filtered)' };
+        }
+        return null;
+      });
+
+      if (fallbackText) {
+        console.log(`Fallback extracted content (${fallbackText.text.length} chars) using selector: ${fallbackText.selector}`);
+        return JSON.stringify({
+          status: "SuccessWithFallback", title: pageTitle, textContent: fallbackText.text,
+          excerpt: null, siteName: null, byline: null, fallbackSelector: fallbackText.selector
+        }, null, 2);
+      }
+
+      console.error('Readability and fallback selectors failed.');
+      throw new Error('Readability and fallback selectors failed to extract meaningful content.');
+
     } catch (error) {
-      console.error(`Error during direct extraction from ${url}:`, error);
+      console.error(`Error during single page extraction from ${url}:`, error);
       let errorMessage = `Failed to extract content from ${url}.`;
       let errorReason = "Unknown error";
       if (error instanceof Error) {
-        if (error.message.includes('timeout')) {
-          errorReason = 'Navigation or content loading timed out.';
-        } else if (error.message.includes('net::') || error.message.includes('Failed to load')) {
-          errorReason = 'Could not resolve or load the URL.';
-        } else if (error.message.includes('extract meaningful content')) {
-           errorReason = 'Readability and fallback selectors failed to extract meaningful content.';
-        } else {
-          errorReason = error.message;
-        }
+        if (error.message.includes('timeout')) errorReason = 'Navigation or content loading timed out.';
+        else if (error.message.includes('net::') || error.message.includes('Failed to load')) errorReason = 'Could not resolve or load the URL.';
+        else if (error.message.includes('extract meaningful content')) errorReason = 'Readability and fallback selectors failed.';
+        else errorReason = error.message;
       }
       errorMessage += ` Reason: ${errorReason}`;
       console.error(errorMessage);
+      // Return error in the standard single-page format
       return JSON.stringify({ status: "Error", message: errorMessage });
+    }
+  }
+
+  // --- Recursive Fetching Logic ---
+
+  private async _extractSameDomainLinks(page: Page, baseUrl: string): Promise<{ url: string, text: string }[]> {
+    if (!page || page.isClosed()) return [];
+    try {
+      const baseHostname = new URL(baseUrl).hostname;
+      const links = await page.evaluate((base) => {
+        return Array.from(document.querySelectorAll('a[href]'))
+          .map(link => {
+            const href = link.getAttribute('href');
+            const text = (link as HTMLElement).innerText || link.textContent || '';
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+              return null;
+            }
+            return { url: href, text: text.trim() };
+          })
+          .filter(Boolean);
+      }, baseUrl); // Pass baseUrl to evaluate
+
+      const resolvedLinks: { url: string, text: string }[] = [];
+      for (const link of links) {
+        if (!link) continue;
+        try {
+          const absoluteUrl = new URL(link.url, baseUrl).href; // Resolve relative URLs
+          if (new URL(absoluteUrl).hostname === baseHostname) {
+            resolvedLinks.push({ url: absoluteUrl, text: link.text || absoluteUrl });
+          }
+        } catch (e) {
+          // Ignore invalid URLs
+        }
+      }
+      // Simple relevance filter: prioritize links with longer text, limit count
+      return resolvedLinks
+        .sort((a, b) => b.text.length - a.text.length) // Prioritize longer text
+        .slice(0, 10); // Limit to 10 links initially
+    } catch (error) {
+      console.error(`Error extracting links from ${baseUrl}:`, error);
+      return [];
+    }
+  }
+
+  private async _fetchSimpleContent(url: string): Promise<{ title: string | null, textContent: string | null, error?: string }> {
+    // Simplified fetch using axios, focused on getting basic text
+    try {
+      const response = await axios.get(url, {
+        timeout: 15000, // Shorter timeout for subsequent fetches
+        headers: { 'User-Agent': CONFIG.USER_AGENT }
+      });
+
+      if (response.status === 200 && response.data && typeof response.data === 'string') {
+        const contentType = response.headers['content-type'];
+        if (contentType && (contentType.includes('html') || contentType.includes('text/plain'))) {
+          // Basic HTML to text conversion
+          const dom = new JSDOM(response.data, { url: url });
+          const title = dom.window.document.title || null;
+          let text = dom.window.document.body?.textContent || '';
+          text = text.replace(/\s+/g, ' ').trim();
+          // Truncate if very long
+          if (text.length > 15000) {
+            text = text.substring(0, 15000) + '... (content truncated)';
+          }
+          return { title, textContent: text };
+        } else {
+           return { title: null, textContent: null, error: `Unsupported content type: ${contentType}` };
+        }
+      } else {
+        return { title: null, textContent: null, error: `HTTP status ${response.status}` };
+      }
+    } catch (error: unknown) { // Explicitly type error as unknown
+      let errorMsg = 'Failed to fetch simple content';
+      // Simplified error check focusing on Error instance and optional response property
+      if (error instanceof Error) {
+          errorMsg = error.message; // Base message from Error object
+          // Attempt to access response status if available (duck typing for Axios-like error)
+          if (typeof error === 'object' && error !== null && 'response' in error && typeof (error as any).response === 'object' && (error as any).response !== null && 'status' in (error as any).response) {
+             errorMsg += ` (status: ${(error as any).response.status})`;
+          }
+      } else {
+          // Handle cases where the thrown value is not an Error object
+          errorMsg = String(error);
+      }
+      console.warn(`Simple fetch failed for ${url}: ${errorMsg}`);
+      return { title: null, textContent: null, error: errorMsg };
+    }
+  }
+
+  private async _recursiveFetch(
+    startUrl: string,
+    maxDepth: number,
+    currentDepth: number,
+    visitedUrls: Set<string>,
+    results: PageContentResult[],
+    globalTimeoutSignal: { timedOut: boolean }
+  ): Promise<void> {
+
+    if (currentDepth > maxDepth || visitedUrls.has(startUrl) || globalTimeoutSignal.timedOut) {
+      return;
+    }
+
+    console.log(`[Depth ${currentDepth}] Fetching: ${startUrl}`);
+    visitedUrls.add(startUrl);
+
+    let pageResult: PageContentResult = { url: startUrl, title: null, textContent: null, error: null };
+    let linksToExplore: { url: string, text: string }[] = [];
+
+    try {
+      // Use the robust single-page fetch for the first level, simple fetch for deeper levels
+      if (currentDepth === 1) {
+        // Use Puppeteer/Readability for the initial page
+        if (!this.page || this.page.isClosed()) throw new Error("Main page instance is not valid for initial fetch.");
+
+        // Navigate and extract using existing robust logic (needs adaptation)
+        // For now, simulate fetching and link extraction
+        await this.page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout: CONFIG.TIMEOUT_PROFILES.navigation });
+        pageResult.title = await this.page.title();
+        const html = await this.page.content();
+        const dom = new JSDOM(html, { url: startUrl });
+        const reader = new Readability(dom.window.document);
+        const article = reader.parse();
+        pageResult.textContent = article?.textContent?.trim() || dom.window.document.body?.textContent?.trim() || null;
+        if (pageResult.textContent && pageResult.textContent.length > 20000) {
+           pageResult.textContent = pageResult.textContent.substring(0, 20000) + '... (truncated)';
+        }
+        linksToExplore = await this._extractSameDomainLinks(this.page, startUrl);
+
+      } else {
+        // Use the simpler axios fetch for subsequent levels
+        const simpleResult = await this._fetchSimpleContent(startUrl);
+        pageResult.title = simpleResult.title;
+        pageResult.textContent = simpleResult.textContent;
+        pageResult.error = simpleResult.error || null;
+        // Don't extract links from simple fetches to limit scope/time
+      }
+
+      if (pageResult.textContent === null && pageResult.error === null) {
+         pageResult.error = "Failed to extract content";
+      }
+
+    } catch (error) {
+      console.error(`[Depth ${currentDepth}] Error fetching ${startUrl}:`, error);
+      pageResult.error = error instanceof Error ? error.message : String(error);
+    }
+
+    results.push(pageResult);
+
+    // Explore links only if depth allows and initial fetch was successful (or partially successful)
+    if (currentDepth < maxDepth && !pageResult.error && linksToExplore.length > 0) {
+      // Limit the number of links to explore per page to avoid excessive time/requests
+      const linksToFollow = linksToExplore.slice(0, 3); // Explore max 3 links per page
+
+      const promises = linksToFollow.map(link => {
+        if (globalTimeoutSignal.timedOut) return Promise.resolve(); // Stop if global timeout hit
+        return this._recursiveFetch(link.url, maxDepth, currentDepth + 1, visitedUrls, results, globalTimeoutSignal);
+      });
+
+      await Promise.all(promises);
+    }
+  }
+
+  // --- Main Tool Handler ---
+  private async handleExtractUrlContent(args: { url: string, depth?: number }): Promise<string> {
+    const { url, depth = 1 } = args;
+    const validatedDepth = Math.max(1, Math.min(depth, 5)); // Clamp depth between 1 and 5
+
+    if (validatedDepth === 1) {
+      // Use the existing single-page extraction logic
+      return this._fetchSinglePageContent(url);
+    } else {
+      // --- Recursive Fetch Logic ---
+      console.log(`Starting recursive fetch for ${url} up to depth ${validatedDepth}`);
+      const visitedUrls = new Set<string>();
+      const results: PageContentResult[] = [];
+      const startTime = Date.now();
+      const globalTimeoutDuration = CONFIG.PAGE_TIMEOUT - CONFIG.MCP_TIMEOUT_BUFFER - 5000; // 5s buffer
+      let globalTimeoutHandle: NodeJS.Timeout | null = null;
+      const globalTimeoutSignal = { timedOut: false };
+
+      const timeoutPromise = new Promise<never>((_, reject) => { // Changed to Promise<never>
+        globalTimeoutHandle = setTimeout(() => {
+          console.warn(`Global recursive fetch timeout (${globalTimeoutDuration}ms) reached for ${url}`);
+          globalTimeoutSignal.timedOut = true;
+          reject(new Error(`Recursive fetch timed out after ${globalTimeoutDuration}ms`));
+        }, globalTimeoutDuration);
+      });
+
+      try {
+        // Ensure browser/page is ready for the initial fetch
+        if (!this.page || this.page.isClosed()) {
+          console.log('Page not available for initial recursive fetch, initializing...');
+          await this.initializeBrowser(); // Re-initialize if needed
+          if (!this.page) throw new Error('Failed to initialize page for recursive fetch.');
+        }
+
+        const fetchPromise = this._recursiveFetch(url, validatedDepth, 1, visitedUrls, results, globalTimeoutSignal);
+
+        await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (globalTimeoutHandle) clearTimeout(globalTimeoutHandle);
+
+        const successfulPages = results.filter(r => !r.error && r.textContent);
+        const status: RecursiveFetchResult['status'] = successfulPages.length === results.length ? 'Success' : (successfulPages.length > 0 ? 'SuccessWithPartial' : 'Error');
+        let message: string | undefined = undefined;
+        if (status === 'SuccessWithPartial') message = `Fetched ${successfulPages.length}/${results.length} pages successfully. Some pages failed or timed out.`;
+        if (status === 'Error' && results.length > 0) message = `Failed to fetch all content. Initial page fetch might have failed or timed out.`;
+        else if (status === 'Error') message = `Failed to fetch any content. Initial page fetch might have failed or timed out.`;
+
+
+        const output: RecursiveFetchResult = {
+          status: status,
+          message: message,
+          rootUrl: url,
+          explorationDepth: validatedDepth,
+          pagesExplored: results.length, // Total attempted/visited
+          content: results,
+        };
+        return JSON.stringify(output, null, 2);
+
+      } catch (error) {
+        if (globalTimeoutHandle) clearTimeout(globalTimeoutHandle);
+        console.error(`Recursive fetch failed catastrophically for ${url}:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // Attempt to return partial results even on catastrophic failure if some were collected
+        if (results.length > 0) {
+           const output: RecursiveFetchResult = {
+             status: 'SuccessWithPartial', // Indicate partial success despite error
+             message: `Operation failed: ${errorMessage}. Returning partial results collected before failure.`,
+             rootUrl: url,
+             explorationDepth: validatedDepth,
+             pagesExplored: results.length,
+             content: results,
+           };
+           return JSON.stringify(output, null, 2);
+        } else {
+           // No results collected, return a clear error
+           return JSON.stringify({
+             status: "Error",
+             message: `Recursive fetch failed: ${errorMessage}`,
+             rootUrl: url,
+             explorationDepth: validatedDepth,
+             pagesExplored: 0,
+             content: [],
+           }, null, 2);
+        }
+      }
     }
   }
 
@@ -1481,49 +1708,85 @@ ${codeChunks[0]}`;
                 type: 'string',
                 description: 'The URL of the website to extract content from.',
                 examples: ['https://www.example.com/article']
+              },
+              depth: {
+                type: 'number',
+                description: 'Optional: Maximum depth for recursive link exploration (1-5). Default is 1 (no recursion).',
+                minimum: 1,
+                maximum: 5,
+                default: 1,
+                examples: [1, 3]
               }
             },
             required: ['url']
           },
           outputSchema: {
             type: 'object',
-            description: 'Returns a JSON object containing the extraction status and content.',
+            description: 'Returns a JSON object. For depth=1, contains extraction status and content for the single URL. For depth>1, contains status, root URL, depth, pages explored, and an array of content objects for each explored page.',
             properties: {
+              // Properties for depth=1 (existing)
               status: {
                 type: 'string',
-                enum: ['Success', 'SuccessWithFallback', 'Error'],
+                enum: ['Success', 'SuccessWithFallback', 'SuccessWithPartial', 'Error'], // Added SuccessWithPartial
                 description: 'Indicates the outcome of the extraction attempt.'
               },
               message: {
                 type: 'string',
-                description: 'Error message if status is "Error".'
+                description: 'Error message if status is "Error" or context for "SuccessWithPartial".'
               },
               title: {
                 type: 'string',
-                description: 'The extracted title of the page/article.'
+                description: 'The extracted title of the page/article (only for depth=1).'
               },
               textContent: {
                 type: 'string',
-                description: 'The main extracted plain text content.'
+                description: 'The main extracted plain text content (only for depth=1).'
               },
               excerpt: {
                 type: 'string',
-                description: 'A short summary or excerpt, if available from Readability.'
+                description: 'A short summary or excerpt, if available from Readability (only for depth=1).'
               },
               siteName: {
                 type: 'string',
-                description: 'The name of the website, if available from Readability.'
+                description: 'The name of the website, if available from Readability (only for depth=1).'
               },
               byline: {
                 type: 'string',
-                description: 'The author or byline, if available from Readability.'
+                description: 'The author or byline, if available from Readability (only for depth=1).'
               },
               fallbackSelector: {
                  type: 'string',
-                 description: 'The CSS selector used if fallback logic was triggered.'
+                 description: 'The CSS selector used if fallback logic was triggered (only for depth=1).'
+              },
+              // Properties for depth > 1
+              rootUrl: {
+                type: 'string',
+                description: 'The initial URL provided for exploration (only for depth>1).'
+              },
+              explorationDepth: {
+                type: 'number',
+                description: 'The maximum depth requested for exploration (only for depth>1).'
+              },
+              pagesExplored: {
+                type: 'number',
+                description: 'The number of pages successfully fetched during exploration (only for depth>1).'
+              },
+              content: {
+                type: 'array',
+                description: 'Array containing results for each explored page (only for depth>1).',
+                items: {
+                  type: 'object',
+                  properties: {
+                    url: { type: 'string', description: 'URL of the explored page.' },
+                    title: { type: 'string', description: 'Title of the explored page (if available).' },
+                    textContent: { type: 'string', description: 'Extracted text content of the page (if successful).' },
+                    error: { type: 'string', description: 'Error message if fetching this specific page failed.' }
+                  },
+                  required: ['url']
+                }
               }
-            },
-            required: ['status'] // Only status is guaranteed
+            }
+            // required: ['status'] // Status is always required
           },
           examples: [
             {
@@ -1534,12 +1797,17 @@ ${codeChunks[0]}`;
             {
               description: 'Extraction fails due to unsupported type',
               input: { url: 'https://example.com/document.pdf' },
-              output: '{\n  "status": "Error",\n  "message": "Failed to extract content from https://example.com/document.pdf. Reason: Unsupported content type: application/pdf"\n}'
+              output: '{\n  "status": "Error",\n  "message": "Failed to extract content from https://example.com/document.pdf. Reason: Unsupported content type: application/pdf"\n}' // Depth=1 example
             },
             {
-               description: 'Extraction using fallback logic',
-               input: { url: 'https://example-non-article-url.com' },
+               description: 'Extraction using fallback logic (depth=1)',
+               input: { url: 'https://example-non-article-url.com' }, // Depth defaults to 1
                output: '{\n  "status": "SuccessWithFallback",\n  "title": "Example Page Title",\n  "textContent": "Text extracted using fallback selector...",\n  "fallbackSelector": ".main-content"\n}'
+            },
+            {
+              description: 'Recursive extraction (depth=2)',
+              input: { url: 'https://example-docs-url.com/start', depth: 2 },
+              output: '{\n  "status": "Success",\n  "rootUrl": "https://example-docs-url.com/start",\n  "explorationDepth": 2,\n  "pagesExplored": 3,\n  "content": [\n    {\n      "url": "https://example-docs-url.com/start",\n      "title": "Start Page",\n      "textContent": "Content of the starting page...",\n      "error": null\n    },\n    {\n      "url": "https://example-docs-url.com/topic1",\n      "title": "Topic 1 Details",\n      "textContent": "Details about topic 1...",\n      "error": null\n    },\n    {\n      "url": "https://example-docs-url.com/topic2",\n      "title": "Topic 2 Details",\n      "textContent": null,\n      "error": "Timeout fetching page"\n    }\n  ]\n}'
             }
           ],
           related_tools: ['search', 'get_documentation']
@@ -1575,7 +1843,7 @@ ${codeChunks[0]}`;
             properties: {
               response: {
                 type: 'string',
-                description: 'The raw text response from Perplexity containing documentation and examples.'
+                description: 'The raw text response from Perplexity containing documentation, examples, and potentially source URLs prefixed with "Official URL(s):". The calling agent should parse this text to extract URLs if needed for further processing.'
               }
             }
           },
