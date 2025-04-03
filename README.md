@@ -24,7 +24,10 @@ Asks Perplexity to find and evaluate APIs based on requirements and context. Ret
 ### 4. Check Deprecated Code (`check_deprecated_code`)
 Asks Perplexity to analyze a code snippet for deprecated features within a specific technology context. Returns raw text output.
 
-### 5. Chat (`chat_perplexity`)
+### 5. Extract URL Content (`extract_url_content`)
+Extracts main article text content from URLs using browser automation and Mozilla's Readability. Handles GitHub repositories via gitingest.com. Supports recursive link exploration up to depth. Returns structured JSON with content and metadata.
+
+### 6. Chat (`chat_perplexity`)
 Maintains ongoing conversations with Perplexity AI. Stores chat history locally in `chat_history.db` within the project directory. Returns a *stringified JSON object* containing `chat_id` and `response`.
 
 ## Installation
