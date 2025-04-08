@@ -67,6 +67,7 @@ Example for Cline/RooCode Extension:
       ],
       "env": {},
       "disabled": false,
+      "alwaysAllow": [],
       "autoApprove": [],
       "timeout": 300
     }
@@ -85,7 +86,7 @@ Example for Claude Desktop:
       ],
       "env": {},
       "disabled": false,
-      "autoApprove": []
+      "alwaysAllow": []
     }
   }
 }
