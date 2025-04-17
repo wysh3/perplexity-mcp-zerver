@@ -56,6 +56,14 @@ declare global {
           THROTTLED: string;
           UPDATE_AVAILABLE: string;
         };
+        connect: () => {
+          postMessage: () => void;
+          onMessage: {
+            addListener: () => void;
+            removeListener: () => void;
+          };
+          disconnect: () => void;
+        };
       };
     };
   }
@@ -238,12 +246,52 @@ class PerplexityMCPServer {
           '--disable-gpu',
           '--disable-dev-shm-usage',
           '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process'
+          '--disable-features=IsolateOrigins,site-per-process',
+          '--disable-blink-features=AutomationControlled',
+          '--disable-infobars',
+          '--disable-notifications',
+          '--disable-popup-blocking',
+          '--disable-default-apps',
+          '--disable-extensions',
+          '--disable-translate',
+          '--disable-sync',
+          '--disable-background-networking',
+          '--disable-client-side-phishing-detection',
+          '--disable-component-update',
+          '--disable-hang-monitor',
+          '--disable-prompt-on-repost',
+          '--disable-domain-reliability',
+          '--disable-renderer-backgrounding',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-breakpad',
+          '--disable-component-extensions-with-background-pages',
+          '--disable-ipc-flooding-protection',
+          '--disable-back-forward-cache',
+          '--disable-partial-raster',
+          '--disable-skia-runtime-opts',
+          '--disable-smooth-scrolling',
+          '--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees',
+          '--enable-features=NetworkService,NetworkServiceInProcess',
+          '--force-color-profile=srgb',
+          '--metrics-recording-only',
+          '--mute-audio',
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--remote-debugging-port=0',
+          '--use-mock-keychain',
+          '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         ]
       });
       this.page = await this.browser.newPage();
       await this.setupBrowserEvasion();
-      await this.page.setViewport({ width: 1920, height: 1080 });
+      await this.page.setViewport({
+        width: 1280,
+        height: 720,
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false
+      });
       await this.page.setUserAgent(CONFIG.USER_AGENT);
       this.page.setDefaultNavigationTimeout(CONFIG.PAGE_TIMEOUT);
       await this.navigateToPerplexity();
@@ -266,13 +314,22 @@ class PerplexityMCPServer {
           waitUntil: 'domcontentloaded', // Wait for DOM parsing, not full load
           timeout: CONFIG.PAGE_TIMEOUT
         });
+
+        // Check for internal error page
+        const isInternalError = await this.page.evaluate(() => {
+          return document.querySelector('main')?.textContent?.includes('internal error') || false;
+        });
+        if (isInternalError) {
+          throw new Error('Perplexity.ai returned internal error page');
+        }
       } catch (gotoError) {
         // Ignore initial goto errors if they are timeout related, as we'll check readiness below
-        if (gotoError instanceof Error && !gotoError.message.toLowerCase().includes('timeout')) {
+        if (gotoError instanceof Error && !gotoError.message.toLowerCase().includes('timeout') &&
+            !gotoError.message.includes('internal error')) {
           console.error('Initial navigation request failed:', gotoError);
           throw gotoError; // Rethrow non-timeout errors
         }
-        console.warn('Navigation with waitUntil: domcontentloaded potentially timed out, proceeding with checks...');
+        console.warn('Navigation issue detected:', gotoError instanceof Error ? gotoError.message : String(gotoError));
       }
 
       // Crucial check: Ensure the page/frame is still valid immediately after goto
@@ -348,62 +405,76 @@ class PerplexityMCPServer {
           })
         }
       });
-      // Inject Chrome-specific properties
-      window.chrome = {
-        app: {
-          InstallState: {
-            DISABLED: 'disabled',
-            INSTALLED: 'installed',
-            NOT_INSTALLED: 'not_installed'
+
+      // Only inject Chrome APIs if they don't exist
+      if (typeof window.chrome === 'undefined') {
+        window.chrome = {
+          app: {
+            InstallState: {
+              DISABLED: 'disabled',
+              INSTALLED: 'installed',
+              NOT_INSTALLED: 'not_installed'
+            },
+            RunningState: {
+              CANNOT_RUN: 'cannot_run',
+              READY_TO_RUN: 'ready_to_run',
+              RUNNING: 'running'
+            },
+            getDetails: function () {},
+            getIsInstalled: function () {},
+            installState: function () {},
+            isInstalled: false,
+            runningState: function () {}
           },
-          RunningState: {
-            CANNOT_RUN: 'cannot_run',
-            READY_TO_RUN: 'ready_to_run',
-            RUNNING: 'running'
-          },
-          getDetails: function () {},
-          getIsInstalled: function () {},
-          installState: function () {},
-          isInstalled: false,
-          runningState: function () {}
-        },
-        runtime: {
-          OnInstalledReason: {
-            CHROME_UPDATE: 'chrome_update',
-            INSTALL: 'install',
-            SHARED_MODULE_UPDATE: 'shared_module_update',
-            UPDATE: 'update'
-          },
-          PlatformArch: {
-            ARM: 'arm',
-            ARM64: 'arm64',
-            MIPS: 'mips',
-            MIPS64: 'mips64',
-            X86_32: 'x86-32',
-            X86_64: 'x86-64'
-          },
-          PlatformNaclArch: {
-            ARM: 'arm',
-            MIPS: 'mips',
-            PNACL: 'pnacl',
-            X86_32: 'x86-32',
-            X86_64: 'x86-64'
-          },
-          PlatformOs: {
-            ANDROID: 'android',
-            CROS: 'cros',
-            LINUX: 'linux',
-            MAC: 'mac',
-            OPENBSD: 'openbsd',
-            WIN: 'win'
-          },
-          RequestUpdateCheckStatus: {
-            NO_UPDATE: 'no_update',
-            THROTTLED: 'throttled',
-            UPDATE_AVAILABLE: 'update_available'
+          runtime: {
+            OnInstalledReason: {
+              CHROME_UPDATE: 'chrome_update',
+              INSTALL: 'install',
+              SHARED_MODULE_UPDATE: 'shared_module_update',
+              UPDATE: 'update'
+            },
+            PlatformArch: {
+              ARM: 'arm',
+              ARM64: 'arm64',
+              MIPS: 'mips',
+              MIPS64: 'mips64',
+              X86_32: 'x86-32',
+              X86_64: 'x86-64'
+            },
+            PlatformNaclArch: {
+              ARM: 'arm',
+              MIPS: 'mips',
+              PNACL: 'pnacl',
+              X86_32: 'x86-32',
+              X86_64: 'x86-64'
+            },
+            PlatformOs: {
+              ANDROID: 'android',
+              CROS: 'cros',
+              LINUX: 'linux',
+              MAC: 'mac',
+              OPENBSD: 'openbsd',
+              WIN: 'win'
+            },
+            RequestUpdateCheckStatus: {
+              NO_UPDATE: 'no_update',
+              THROTTLED: 'throttled',
+              UPDATE_AVAILABLE: 'update_available'
+            },
+            // Add basic connect stub to prevent errors
+            connect: function() {
+              return {
+                postMessage: function() {},
+                onMessage: {
+                  addListener: function() {},
+                  removeListener: function() {}
+                },
+                disconnect: function() {}
+              };
+            }
           }
-        }
-      };
+        };
+      }
     });
   }
 
@@ -473,6 +544,10 @@ class PerplexityMCPServer {
     if (errorMsg.includes('timeout') || errorMsg.includes('navigation')) {
       this.log('warn', 'Timeout or navigation error detected, setting recovery to level 1 (refresh)');
       return 1; // Refresh for timeouts/navigation
+    }
+    if (errorMsg.includes('internal error')) {
+      this.log('warn', 'Internal error page detected, escalating to level 3 (full restart)');
+      return 3; // Full restart for internal errors
     }
     this.log('warn', `Unknown error type ('${errorMsg.substring(0, 50)}...'), defaulting recovery to level 3`);
     return 3; // Full restart for other errors
