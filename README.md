@@ -110,7 +110,7 @@ Thanks DaInfernalCoder:
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE.md](LICENSE.md) file for details. Portions are derived from MIT-licensed work, as noted in the license file.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE.md](LICENSE) file for details.
 
 ## Disclaimer
 
