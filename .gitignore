@@ -21,3 +21,6 @@ chat_history.db
 
 # Lock file (User requested)
 package-lock.json
+
+# Proxy lists and other text files
+*.txt
