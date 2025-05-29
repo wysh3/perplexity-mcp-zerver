@@ -50,32 +50,83 @@ npm run build
 
 > **Important**: Ensure you have Node.js installed. Puppeteer will download a compatible browser version if needed during installation. Restart your IDE/Application after building and configuring the project for changes to take effect.
 
+## Running Globally (Optional)
+
+After installation and building, you can make the server runnable as a global command from any directory.
+
+1.  **Link the package**: In the project directory (`perplexity-mcp-zerver`), run:
+    ```bash
+    npm link
+    ```
+    This will create a global command `perplexity-mcp-server-cli`.
+
+2.  **Run the server globally**: You can now start the server from any terminal window:
+    *   Without a proxy:
+        ```bash
+        perplexity-mcp-server-cli
+        ```
+    *   With a proxy (e.g., a SOCKS5 proxy):
+        ```bash
+        perplexity-mcp-server-cli --proxy-server=socks5://YOUR_PROXY_IP:PORT
+        ```
+        Replace `YOUR_PROXY_IP:PORT` with your actual proxy details. The server currently supports HTTP/HTTPS and SOCKS4/SOCKS5 proxy formats for this argument when using `puppeteer-real-browser`.
+
+    Using the global command means you don't need to specify the full path to `build/index.js` in your MCP configuration. Instead, you can use `perplexity-mcp-server-cli` as the command.
+
 ## Configuration
 
 Add the server to your MCP configuration file (e.g., `cline_mcp_settings.json` for the VS Code extension or `claude_desktop_config.json` for the desktop app).
 
-**Important:** Replace `/path/to/perplexity-mcp-zerver/build/index.js` with the **absolute path** to the built `index.js` file on your system.
+**If running directly with `node` (not globally linked):**
+Replace `/path/to/perplexity-mcp-zerver/build/index.js` with the **absolute path** to the built `index.js` file on your system.
+You can also add the `--proxy-server` argument here if needed.
 
-Example for Cline/RooCode Extension:
+Example for Cline/RooCode Extension (direct node execution):
 ```json
 {
   "mcpServers": {
     "perplexity-server": {
       "command": "node",
       "args": [
-        "/full/path/to/your/perplexity-mcp-zerver/build/index.js" // <-- Replace this path! (in case of windows for ex: "C:\\Users\\$USER\\Documents\\Cline\\MCP\\perplexity-mcp-zerver\\build\\index.js"
+        "/full/path/to/your/perplexity-mcp-zerver/build/index.js" // <-- Replace this path!
+        // To use a proxy:
+        // "/full/path/to/your/perplexity-mcp-zerver/build/index.js",
+        // "--proxy-server=socks5://YOUR_PROXY_IP:PORT" 
       ],
       "env": {},
       "disabled": false,
-      "alwaysAllow": [],
-      "autoApprove": [],
+      "alwaysAllow": ["search", "extract_url_content"],
+      "autoApprove": ["search", "get_documentation"],
       "timeout": 300
     }
   }
 }
 ```
 
-Example for Claude Desktop:
+**If running with the globally linked `perplexity-mcp-server-cli` command:**
+The `command` field should be `perplexity-mcp-server-cli` and `args` can include the proxy.
+
+Example for Cline/RooCode Extension (global command):
+```json
+{
+  "mcpServers": {
+    "perplexity-server": {
+      "command": "perplexity-mcp-server-cli", // Use the global command
+      "args": [
+        // To use a proxy:
+        // "--proxy-server=socks5://YOUR_PROXY_IP:PORT" 
+      ],
+      "env": {},
+      "disabled": false,
+      "alwaysAllow": ["search", "extract_url_content"],
+      "autoApprove": ["search", "get_documentation"],
+      "timeout": 300
+    }
+  }
+}
+```
+
+Example for Claude Desktop (direct node execution):
 ```json
 {
   "mcpServers": {
@@ -95,9 +146,10 @@ Example for Claude Desktop:
 ## Usage
 
 1.  Ensure the server is configured correctly in your MCP settings file.
-2.  Restart your IDE (like VS Code with the Cline/RooCode extension) or the Claude Desktop application.
-3.  The MCP client should automatically connect to the server.
-4.  You can now ask the connected AI assistant (like Claude) to use the tools, e.g.:
+2.  Start the server (either directly via `node build/index.js` in the project directory, or globally using `perplexity-mcp-server-cli` if linked).
+3.  Restart your IDE (like VS Code with the Cline/RooCode extension) or the Claude Desktop application if it was already running when you started the server.
+4.  The MCP client should automatically connect to the server.
+5.  You can now ask the connected AI assistant (like Claude) to use the tools, e.g.:
     *   "Use perplexity-server search to find the latest news on AI."
     *   "Ask perplexity-server get_documentation about React hooks."
     *   "Start a chat with perplexity-server about quantum computing."

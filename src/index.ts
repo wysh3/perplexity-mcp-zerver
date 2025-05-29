@@ -79,7 +79,10 @@ import {
   McpError,
   ErrorCode,
 } from '@modelcontextprotocol/sdk/types.js';
-import puppeteer, { Browser, Page } from 'puppeteer';
+import { connect as puppeteerConnect } from 'puppeteer-real-browser';
+// import puppeteer from 'puppeteer-extra'; // Old import
+// import StealthPlugin from 'puppeteer-extra-plugin-stealth'; // Old import
+import { Browser, Page } from 'puppeteer'; // Still needed for type annotations from standard puppeteer
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
@@ -88,6 +91,9 @@ import crypto from 'crypto';
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
 import axios from 'axios'; // Reverted: Remove explicit isAxiosError import
+
+// Apply the stealth plugin - Not needed with puppeteer-real-browser
+// puppeteer.use(StealthPlugin()); 
 
 // ─── INTERFACES ────────────────────────────────────────────────────────
 interface ChatMessage {
@@ -235,64 +241,64 @@ class PerplexityMCPServer {
       if (this.browser) {
         await this.browser.close();
       }
-      this.browser = await puppeteer.launch({
-        headless: true,
+
+      const connectOptions: any = {
+        headless: 'new', // Changed back to 'new' for headless operation
         args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-blink-features=AutomationControlled',
-          '--window-size=1920,1080',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu',
-          '--disable-dev-shm-usage',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process',
-          '--disable-blink-features=AutomationControlled',
-          '--disable-infobars',
-          '--disable-notifications',
-          '--disable-popup-blocking',
-          '--disable-default-apps',
-          '--disable-extensions',
-          '--disable-translate',
-          '--disable-sync',
-          '--disable-background-networking',
-          '--disable-client-side-phishing-detection',
-          '--disable-component-update',
-          '--disable-hang-monitor',
-          '--disable-prompt-on-repost',
-          '--disable-domain-reliability',
-          '--disable-renderer-backgrounding',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-breakpad',
-          '--disable-component-extensions-with-background-pages',
-          '--disable-ipc-flooding-protection',
-          '--disable-back-forward-cache',
-          '--disable-partial-raster',
-          '--disable-skia-runtime-opts',
-          '--disable-smooth-scrolling',
-          '--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees',
-          '--enable-features=NetworkService,NetworkServiceInProcess',
-          '--force-color-profile=srgb',
-          '--metrics-recording-only',
-          '--mute-audio',
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--remote-debugging-port=0',
-          '--use-mock-keychain',
-          '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        ]
-      });
-      this.page = await this.browser.newPage();
-      await this.setupBrowserEvasion();
-      await this.page.setViewport({
-        width: 1280,
-        height: 720,
-        deviceScaleFactor: 1,
-        isMobile: false,
-        hasTouch: false
-      });
-      await this.page.setUserAgent(CONFIG.USER_AGENT);
+          '--window-size=1920,1080', // A common window size
+          '--user-agent=' + CONFIG.USER_AGENT, // Use our defined user agent
+          // puppeteer-real-browser handles many anti-detection args by default.
+          // Add other essential args if needed, e.g., '--disable-gpu' if issues arise.
+        ],
+        connectOption: { // Options passed to puppeteer.connect
+          defaultViewport: {
+            width: 1280,
+            height: 720,
+            deviceScaleFactor: 1,
+            isMobile: false,
+            hasTouch: false
+          }
+        }, // Added comma here
+        // customConfig: {}, // For chrome-launcher options if needed
+        turnstile: true, // Attempt to handle Cloudflare Turnstile
+        // disableXvfb: false, // Set to true if you want to see the browser on Linux (headless: false)
+      };
+
+      // Handle --proxy-server command line argument
+      const proxyArgCli = process.argv.find(arg => arg.startsWith('--proxy-server='));
+      if (proxyArgCli) {
+        const fullProxyString = proxyArgCli.split('=')[1];
+        if (fullProxyString.startsWith('socks4://') || fullProxyString.startsWith('socks5://')) {
+          // For SOCKS proxies, add the full string as a launch argument
+          connectOptions.args.push(`--proxy-server=${fullProxyString}`);
+          console.log(`Using SOCKS proxy via launch arg: ${fullProxyString} with puppeteer-real-browser`);
+          // Ensure connectOptions.proxy is not set if we are using args for SOCKS
+          delete connectOptions.proxy; 
+        } else {
+          // For HTTP/HTTPS proxies, parse for host and port for connectOptions.proxy
+          let proxyAddress = fullProxyString;
+          if (proxyAddress.includes('://')) {
+            proxyAddress = proxyAddress.split('://')[1];
+          }
+          const [host, portString] = proxyAddress.split(':');
+          const port = parseInt(portString, 10);
+          if (host && portString && !isNaN(port)) {
+            connectOptions.proxy = { host, port };
+            console.log(`Using HTTP/S proxy: ${host}:${port} with puppeteer-real-browser`);
+          } else {
+            console.warn(`Invalid proxy format for HTTP/S: ${fullProxyString}. Expected IP:PORT or HOST:PORT. Ignoring proxy.`);
+          }
+        }
+      }
+      
+      const { browser, page } = await puppeteerConnect(connectOptions);
+      this.browser = browser as unknown as Browser; 
+      this.page = page as unknown as Page; // Changed type assertion
+      
+      // this.setupBrowserEvasion(); // puppeteer-real-browser aims to handle most evasions.
+                                  // If specific navigator properties still need overriding, it could be done here
+                                  // after page is created, but test without it first.
+
       this.page.setDefaultNavigationTimeout(CONFIG.PAGE_TIMEOUT);
       await this.navigateToPerplexity();
     } catch (error) {
@@ -343,7 +349,7 @@ class PerplexityMCPServer {
       if (!searchInput) {
         console.error('Search input not found after navigation, taking screenshot for debugging');
         if (!this.page.isClosed()) {
-          await this.page.screenshot({ path: 'debug_no_search_input.png', fullPage: true });
+          await this.page.screenshot({ path: join('/tmp/', 'debug_no_search_input.png') as `${string}.png`, fullPage: true });
         }
         throw new Error('Search input not found after navigation - page might not have loaded correctly');
       }
@@ -378,7 +384,7 @@ class PerplexityMCPServer {
       // Try to take a screenshot of the failed state if possible
       try {
         if (this.page) {
-          await this.page.screenshot({ path: 'debug_navigation_failed.png', fullPage: true });
+          await this.page.screenshot({ path: join('/tmp/', 'debug_navigation_failed.png') as `${string}.png`, fullPage: true });
           console.log('Captured screenshot of failed navigation state');
         }
       } catch (screenshotError) {
@@ -512,7 +518,7 @@ class PerplexityMCPServer {
       }
     }
     // Take a screenshot for debugging if none is found
-    await this.page.screenshot({ path: 'debug_search_not_found.png', fullPage: true });
+    await this.page.screenshot({ path: join('/tmp/', 'debug_search_not_found.png') as `${string}.png`, fullPage: true });
     console.error('No working search input found');
     return null;
   }
@@ -974,7 +980,7 @@ class PerplexityMCPServer {
         if (!selector) {
           console.error('Search input not found, taking screenshot for debugging');
           if (this.page) {
-            await this.page.screenshot({ path: 'debug_search_input_not_found.png', fullPage: true });
+            await this.page.screenshot({ path: join('/tmp/', 'debug_search_input_not_found.png') as `${string}.png`, fullPage: true });
           }
           throw new Error('Search input not found');
         }
@@ -1034,7 +1040,7 @@ class PerplexityMCPServer {
             throw new Error('Page became invalid while waiting for response');
           }
           // Take a screenshot for debugging
-          await this.page.screenshot({ path: 'debug_prose_not_found.png', fullPage: true });
+          await this.page.screenshot({ path: join('/tmp/', 'debug_prose_not_found.png') as `${string}.png`, fullPage: true });
           
           // Check if there's any visible text content that might contain an answer
           const pageText = await this.page.evaluate(() => document.body.innerText);

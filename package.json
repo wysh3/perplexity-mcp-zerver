@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "MCP server using Puppeteer to interact with Perplexity.ai without an API key.",
   "main": "build/index.js",
+  "bin": {
+    "perplexity-mcp-server-cli": "./build/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node build/index.js",
@@ -27,7 +30,10 @@
     "axios": "^1.8.4",
     "better-sqlite3": "^11.8.1",
     "jsdom": "^26.0.0",
-    "puppeteer": "^24.2.0"
+    "puppeteer": "^24.2.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "puppeteer-real-browser": "^1.0.2"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
