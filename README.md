@@ -70,6 +70,7 @@ After installation and building, you can make the server runnable as a global co
         perplexity-mcp-server-cli --proxy-server=socks5://YOUR_PROXY_IP:PORT
         ```
         Replace `YOUR_PROXY_IP:PORT` with your actual proxy details. The server currently supports HTTP/HTTPS and SOCKS4/SOCKS5 proxy formats for this argument when using `puppeteer-real-browser`.
+        A good source for free, frequently updated SOCKS and HTTP proxies is Proxifly: [https://github.com/proxifly/free-proxy-list](https://github.com/proxifly/free-proxy-list).
 
     Using the global command means you don't need to specify the full path to `build/index.js` in your MCP configuration. Instead, you can use `perplexity-mcp-server-cli` as the command.
 
