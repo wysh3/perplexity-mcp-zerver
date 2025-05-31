@@ -19,6 +19,7 @@ logs/
 # Local database
 chat_history.db
 
-# Lock file (User requested)
+# Lock files
 package-lock.json
+pnpm-lock.yaml
 .aider*

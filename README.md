@@ -38,14 +38,14 @@ git clone https://github.com/wysh3/perplexity-mcp-zerver.git
 cd perplexity-mcp-zerver
 ```
 
-2. Install dependencies:
+2. Install dependencies using pnpm:
 ```bash
-npm install
+pnpm install
 ```
 
 3. Build the server:
 ```bash
-npm run build
+pnpm run build
 ```
 
 > **Important**: Ensure you have Node.js installed. Puppeteer will download a compatible browser version if needed during installation. Restart your IDE/Application after building and configuring the project for changes to take effect.
