@@ -21,3 +21,4 @@ chat_history.db
 
 # Lock file (User requested)
 package-lock.json
+.aider*
