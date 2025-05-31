@@ -5,7 +5,8 @@
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node build/index.js"
+    "start": "node build/index.js",
+    "postinstall": "pnpm rebuild better-sqlite3 puppeteer"
   },
   "keywords": [
     "mcp",

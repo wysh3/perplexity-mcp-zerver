@@ -22,4 +22,5 @@ chat_history.db
 # Lock files
 package-lock.json
 pnpm-lock.yaml
+pnpm-workspace.yaml
 .aider*

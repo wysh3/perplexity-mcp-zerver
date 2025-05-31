@@ -48,7 +48,11 @@ pnpm install
 pnpm run build
 ```
 
-> **Important**: Ensure you have Node.js installed. Puppeteer will download a compatible browser version if needed during installation. Restart your IDE/Application after building and configuring the project for changes to take effect.
+> **Important**: 
+> - Ensure you have Node.js installed
+> - Puppeteer will download a compatible browser during installation
+> - Native modules are automatically rebuilt during installation
+> - Restart your IDE/Application after building
 
 ## Configuration
 
