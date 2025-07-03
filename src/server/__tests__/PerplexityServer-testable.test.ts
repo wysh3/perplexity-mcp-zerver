@@ -1,6 +1,6 @@
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 /**
- * Testable DocshunterServer tests using proper mocking
+ * Testable PerplexityServer tests using proper mocking
  * Focus on testing the constructor and setup logic
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -155,7 +155,7 @@ describe("PerplexityServer", () => {
   describe("Constructor", () => {
     it("should initialize successfully with all components", () => {
       expect(() => {
-        server = new DocshunterServer();
+        server = new PerplexityServer();
       }).not.toThrow();
 
       // Verify MCP Server was created - we'll verify this by checking if the server was instantiated
@@ -191,7 +191,7 @@ describe("PerplexityServer", () => {
     it("should skip directory creation if it exists", () => {
       mockExistsSync.mockReturnValue(true);
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(mockMkdirSync).not.toHaveBeenCalled();
     });
@@ -199,7 +199,7 @@ describe("PerplexityServer", () => {
     it("should setup SIGINT handler when not in MCP mode", () => {
       const processOnSpy = vi.spyOn(process, "on");
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(processOnSpy).toHaveBeenCalledWith("SIGINT", expect.any(Function));
     });
@@ -208,7 +208,7 @@ describe("PerplexityServer", () => {
       process.env[mcpModeKey] = "true";
       const processOnSpy = vi.spyOn(process, "on");
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(processOnSpy).not.toHaveBeenCalledWith("SIGINT", expect.any(Function));
     });
@@ -220,7 +220,7 @@ describe("PerplexityServer", () => {
       });
 
       expect(() => {
-        server = new DocshunterServer();
+        server = new PerplexityServer();
       }).toThrow("Database setup failed");
 
       expect(mockLogError).toHaveBeenCalledWith(
@@ -239,7 +239,7 @@ describe("PerplexityServer", () => {
         throw new Error("process.exit called");
       });
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       // Get the SIGINT handler that was registered with proper typing
       const processOnCalls = vi.mocked(process.on).mock.calls;
@@ -268,7 +268,7 @@ describe("PerplexityServer", () => {
 
   describe("Tool Registry", () => {
     it("should create tool handlers registry correctly", () => {
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(mockCreateToolHandlersRegistry).toHaveBeenCalledWith(
         expect.objectContaining({
