@@ -72,7 +72,7 @@ Add the server to your MCP configuration file. This file may be named `cline_mcp
     "perplexity-server": {
       "command": "node",
       "args": [
-        "/full/path/to/your/perplexity-mcp-zerver/build/index.js"
+        "/full/path/to/your/perplexity-mcp-zerver/build/main.js"
       ],
       "env": {},
       "disabled": false,
