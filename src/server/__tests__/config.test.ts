@@ -76,11 +76,11 @@ describe("Server Configuration", () => {
   describe("MCP server configuration", () => {
     it("should define server metadata", () => {
       const serverInfo = {
-        name: "docshunter",
+        name: "perplexity-server",
         version: "0.2.1",
       };
 
-      expect(serverInfo.name).toBe("docshunter");
+      expect(serverInfo.name).toBe("perplexity-server");
       expect(serverInfo.version).toMatch(/^\d+\.\d+\.\d+$/);
     });
 

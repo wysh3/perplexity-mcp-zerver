@@ -1,12 +1,12 @@
 # Troubleshooting Guide
 
-Common issues and solutions for Docshunter installation and operation.
+Common issues and solutions for perplexity-mcp-zerver installation and operation.
 
 ## MCP Connection Issues
 
 ### Connection Failed / Server Not Found
 
-**Symptoms**: Cursor/Claude Desktop can't connect to Docshunter MCP server
+**Symptoms**: Cursor/Claude Desktop can't connect to perplexity MCP server
 
 **Solutions**:
 
@@ -172,10 +172,10 @@ npx puppeteer browsers install chrome
 
 ```bash
 # Check file permissions
-ls -la docshunter.db
+ls -la chat-history.db
 
 # Fix permissions if needed
-chmod 644 docshunter.db
+chmod 644 chat-history.db
 ```
 
 **Database Locked**:
@@ -350,7 +350,7 @@ When reporting bugs, include:
 
 ### Community Support
 
-- **GitHub Issues**: [Create an issue](https://github.com/sm-moshi/docshunter/issues)
+- **GitHub Issues**: [Create an issue](https://github.com/wysh3/perplexity-mcp-zerver/issues)
 - **Documentation**: Check other files in `docs/` directory
 - **Best Practices**: Review `docs/best-practices.md`
 - **Testing Guide**: See `docs/testing.md` for comprehensive patterns

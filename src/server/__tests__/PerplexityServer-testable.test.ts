@@ -224,7 +224,7 @@ describe("PerplexityServer", () => {
       }).toThrow("Database setup failed");
 
       expect(mockLogError).toHaveBeenCalledWith(
-        "Error in DocshunterServer constructor:",
+        "Error in PerplexityServer constructor:",
         expect.objectContaining({
           error: "Database setup failed",
           stack: expect.any(String),

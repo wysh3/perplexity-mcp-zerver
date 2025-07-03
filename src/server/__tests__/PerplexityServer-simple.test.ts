@@ -1,5 +1,5 @@
 /**
- * Simple tests for DocshunterServer utility methods
+ * Simple tests for PerplexityServer utility methods
  * Focus on pure functions and methods that don't require browser automation
  */
 import { describe, expect, it } from "vitest";

@@ -1,6 +1,6 @@
 # Testing Guide
 
-Docshunter features a comprehensive testing infrastructure with **48 tests** ensuring reliability and maintainability, including advanced module-specific test suites.
+perplexity-server features a comprehensive testing infrastructure with **48 tests** ensuring reliability and maintainability, including advanced module-specific test suites.
 
 ## Running Tests
 
@@ -42,7 +42,7 @@ src/
 | **Utils** (`db.ts`, `logging.ts`, `config.ts`) | **100%** | ✅ Complete | Foundation |
 | **Schema** (`toolSchemas.ts`) | 0% | ⏳ Future | Validation |
 | **Tools** (all handlers) | 0% | ⏳ Future | Business Logic |
-| **Server** (`DocshunterServer.ts`) | 0% | ⏳ Future | Integration |
+| **Server** (`perplexityServer.ts`) | 0% | ⏳ Future | Integration |
 
 **Current**: Strategic coverage with +115% improvement across critical modules
 **Target**: Continue expanding to other modules using established patterns
@@ -188,7 +188,7 @@ describe("Database Lifecycle", () => {
 - **Strategic Approach**: Focus on critical modules with comprehensive patterns
 - **Mock Infrastructure**: Sophisticated mocking for better-sqlite3, Puppeteer, interfaces
 
-**Proven Patterns from Docshunter**:
+**Proven Patterns from perplexity-server**:
 
 ```typescript
 // Real database testing with better-sqlite3

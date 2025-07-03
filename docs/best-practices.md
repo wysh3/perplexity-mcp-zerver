@@ -191,7 +191,7 @@
 - **Mock file system operations** using `memfs` for Node.js file testing.
 - **Use MSW (Mock Service Worker)** for HTTP request mocking in integration tests.
 
-### **🎯 Docshunter Testing Experience (2025-05-24)**
+### **🎯 perplexity Testing Experience (2025-05-24)**
 
 **Real-World Complexity**: Testing is challenging for systems with external dependencies:
 
@@ -199,7 +199,7 @@
 - **Strategic Approach**: Focus on critical modules with comprehensive patterns established
 - **Real Code Testing**: Prefer actual operations over mocks where possible
 
-**Proven Patterns from Docshunter**:
+**Proven Patterns from perplexity**:
 
 ```typescript
 // Real database testing with better-sqlite3
@@ -516,7 +516,7 @@ describe("Database Lifecycle", () => {
 import { MCPServer } from '@modelcontextprotocol/sdk/server/index.js';
 
 const server = new MCPServer({
-  name: 'docshunter',
+  name: 'perplexity-server',
   version: '1.0.0',
   transport: 'sse'  // Enable Server-Sent Events
 });
@@ -560,7 +560,7 @@ server.tool('search_documentation', {
 // .cursor/mcp.json
 {
   "mcpServers": {
-    "docshunter": {
+    "perplexity-server": {
       "command": "node",
       "args": ["./build/main.js"],
       "transport": "sse",
@@ -574,7 +574,7 @@ server.tool('search_documentation', {
 }
 ```
 
-#### **Benefits for Docshunter**
+#### **Benefits for perplexity**
 
 - **Immediate feedback** - Users see results as they arrive
 - **Memory efficiency** - No need to buffer large responses

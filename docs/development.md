@@ -1,6 +1,6 @@
 # Development Guide
 
-Guide for contributors and developers working on Docshunter.
+Guide for contributors and developers working on perplexity-mcp-zerver.
 
 ## Prerequisites
 
@@ -12,8 +12,8 @@ Guide for contributors and developers working on Docshunter.
 
 ```bash
 # Clone and setup
-git clone https://github.com/sm-moshi/docshunter.git
-cd docshunter
+git clone https://github.com/sm-moshi/perplexity-mcp-zerver.git
+cd perplexity-mcp-zerver
 
 # Install dependencies
 pnpm install
