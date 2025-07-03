@@ -97,7 +97,7 @@ vi.mock("../../utils/fetch.js", () => ({
 }));
 
 // Now import the class under test
-import { DocshunterServer } from "../DocshunterServer.js";
+import { PerplexityServer } from "../PerplexityServer.js";
 
 // Import mocked logging functions
 import * as logging from "../../utils/logging.js";
@@ -126,8 +126,8 @@ interface MockServer {
   close: ReturnType<typeof vi.fn>;
 }
 
-describe("DocshunterServer", () => {
-  let server: DocshunterServer;
+describe("PerplexityServer", () => {
+  let server: PerplexityServer;
   let originalEnv: NodeJS.ProcessEnv;
   const mcpModeKey = "MCP_MODE";
 
@@ -172,13 +172,13 @@ describe("DocshunterServer", () => {
         expect.stringContaining("Initializing database at:"),
       );
       expect(mockLogInfo).toHaveBeenCalledWith("DatabaseManager initialized successfully");
-      expect(mockLogInfo).toHaveBeenCalledWith("DocshunterServer initialized successfully");
+      expect(mockLogInfo).toHaveBeenCalledWith("PerplexityServer initialized successfully");
     });
 
     it("should create database directory if it doesn't exist", () => {
       mockExistsSync.mockReturnValue(false);
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(mockMkdirSync).toHaveBeenCalledWith(expect.stringContaining("src"), {
         recursive: true,

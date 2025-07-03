@@ -57,9 +57,9 @@ export class DocshunterServer {
         this.setupShutdownHandler();
       }
 
-      logInfo("DocshunterServer initialized successfully");
+      logInfo("PerplexityServer initialized successfully");
     } catch (error) {
-      logError("Error in DocshunterServer constructor:", {
+      logError("Error in PerplexityServer constructor:", {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
@@ -184,12 +184,12 @@ export class DocshunterServer {
       logInfo("Creating StdioServerTransport...");
       const transport = new StdioServerTransport();
 
-      logInfo("Starting DocshunterServer...");
+      logInfo("Starting PerplexityServer...");
       logInfo(`Tools registered: ${Object.keys(this.getToolHandlersRegistry()).join(", ")}`);
 
       logInfo("Attempting to connect server to transport...");
       await this.server.connect(transport);
-      logInfo("DocshunterServer connected and ready");
+      logInfo("PerplexityServer connected and ready");
       logInfo("Server is listening for requests...");
 
       // Keep the process alive

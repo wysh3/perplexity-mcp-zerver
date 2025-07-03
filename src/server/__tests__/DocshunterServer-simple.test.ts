@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 // Create a test server class that exposes private methods for testing
-class TestableDocshunterServer {
+class TestablePerplexityServer {
   // Copy the private method implementations here for testing
   private splitCodeIntoChunks(code: string, maxLength: number): string[] {
     if (code.length <= maxLength) return [code];
@@ -66,11 +66,11 @@ class TestableDocshunterServer {
   }
 }
 
-describe("DocshunterServer Utilities", () => {
-  let testServer: TestableDocshunterServer;
+describe("PerplexityServer Utilities", () => {
+  let testServer: TestablePerplexityServer;
 
   beforeEach(() => {
-    testServer = new TestableDocshunterServer();
+    testServer = new TestablePerplexityServer();
   });
 
   describe("splitCodeIntoChunks", () => {
