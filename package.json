@@ -1,5 +1,5 @@
 {
-  "name": "docshunter",
+  "name": "perplexity-mcp-zerver",
   "version": "0.3.1",
   "description": "MCP server using Puppeteer to interact with Perplexity.ai without an API key.",
   "main": "build/main.js",

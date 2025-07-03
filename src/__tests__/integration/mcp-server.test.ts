@@ -34,12 +34,12 @@ describe("MCP Server Integration Tests", () => {
     it("should initialize server without errors", () => {
       // Test server initialization
       const serverConfig = {
-        name: "docshunter",
+        name: "perplexity-server",
         version: "0.2.1",
         tools: ["search", "extract_url_content"],
       };
 
-      expect(serverConfig.name).toBe("docshunter");
+      expect(serverConfig.name).toBe("perplexity-server");
       expect(Array.isArray(serverConfig.tools)).toBe(true);
       expect(serverConfig.tools.length).toBeGreaterThan(0);
     });
@@ -208,7 +208,7 @@ describe("MCP Server Integration Tests", () => {
     it("should validate server configuration", () => {
       const config = {
         server: {
-          name: "docshunter",
+          name: "perplexity-server",
           version: "0.2.1",
         },
         puppeteer: {
@@ -217,7 +217,7 @@ describe("MCP Server Integration Tests", () => {
         },
       };
 
-      expect(config.server.name).toBe("docshunter");
+      expect(config.server.name).toBe("perplexity-server");
       expect(config.server.version).toMatch(/^\d+\.\d+\.\d+$/);
       expect(config.puppeteer.headless).toBe(true);
       expect(config.puppeteer.timeout).toBeGreaterThan(0);

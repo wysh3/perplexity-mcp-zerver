@@ -1,6 +1,6 @@
 # Architecture Guide
 
-Docshunter features a **clean modular architecture** designed for maintainability and testability.
+Perplexity features a **clean modular architecture** designed for maintainability and testability.
 
 ## Directory Structure
 
@@ -8,7 +8,7 @@ Docshunter features a **clean modular architecture** designed for maintainabilit
 src/
 ├── main.ts                       # Entry point
 ├── server/                       # MCP server implementation
-│   ├── DocshunterServer.ts      # Main server class
+│   ├── PerplexityServer.ts      # Main server class
 │   ├── config.ts                # Configuration constants
 │   ├── toolHandlerSetup.ts      # Tool registration
 │   └── modules/                 # Core server modules
@@ -49,7 +49,7 @@ src/
 
 ### Server Layer (`src/server/`)
 
-- **DocshunterServer.ts**: Main MCP server implementation
+- **PerplexityServer.ts**: Main MCP server implementation
   - Tool registration and lifecycle management
   - Request/response handling
   - Error boundaries and logging
@@ -109,7 +109,7 @@ Each tool handler is self-contained with:
 
 ```mermaid
 graph TD
-    A[MCP Client] --> B[DocshunterServer]
+    A[MCP Client] --> B[Perplexity Server]
     B --> C[Tool Handler]
     C --> D[Utility Layer]
     D --> E[External Services]

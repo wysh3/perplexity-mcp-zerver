@@ -1,6 +1,6 @@
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 /**
- * Testable DocshunterServer tests using proper mocking
+ * Testable PerplexityServer tests using proper mocking
  * Focus on testing the constructor and setup logic
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -97,7 +97,7 @@ vi.mock("../../utils/fetch.js", () => ({
 }));
 
 // Now import the class under test
-import { DocshunterServer } from "../DocshunterServer.js";
+import { PerplexityServer } from "../PerplexityServer.js";
 
 // Import mocked logging functions
 import * as logging from "../../utils/logging.js";
@@ -126,8 +126,8 @@ interface MockServer {
   close: ReturnType<typeof vi.fn>;
 }
 
-describe("DocshunterServer", () => {
-  let server: DocshunterServer;
+describe("PerplexityServer", () => {
+  let server: PerplexityServer;
   let originalEnv: NodeJS.ProcessEnv;
   const mcpModeKey = "MCP_MODE";
 
@@ -155,7 +155,7 @@ describe("DocshunterServer", () => {
   describe("Constructor", () => {
     it("should initialize successfully with all components", () => {
       expect(() => {
-        server = new DocshunterServer();
+        server = new PerplexityServer();
       }).not.toThrow();
 
       // Verify MCP Server was created - we'll verify this by checking if the server was instantiated
@@ -172,13 +172,13 @@ describe("DocshunterServer", () => {
         expect.stringContaining("Initializing database at:"),
       );
       expect(mockLogInfo).toHaveBeenCalledWith("DatabaseManager initialized successfully");
-      expect(mockLogInfo).toHaveBeenCalledWith("DocshunterServer initialized successfully");
+      expect(mockLogInfo).toHaveBeenCalledWith("PerplexityServer initialized successfully");
     });
 
     it("should create database directory if it doesn't exist", () => {
       mockExistsSync.mockReturnValue(false);
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(mockMkdirSync).toHaveBeenCalledWith(expect.stringContaining("src"), {
         recursive: true,
@@ -191,7 +191,7 @@ describe("DocshunterServer", () => {
     it("should skip directory creation if it exists", () => {
       mockExistsSync.mockReturnValue(true);
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(mockMkdirSync).not.toHaveBeenCalled();
     });
@@ -199,7 +199,7 @@ describe("DocshunterServer", () => {
     it("should setup SIGINT handler when not in MCP mode", () => {
       const processOnSpy = vi.spyOn(process, "on");
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(processOnSpy).toHaveBeenCalledWith("SIGINT", expect.any(Function));
     });
@@ -208,7 +208,7 @@ describe("DocshunterServer", () => {
       process.env[mcpModeKey] = "true";
       const processOnSpy = vi.spyOn(process, "on");
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(processOnSpy).not.toHaveBeenCalledWith("SIGINT", expect.any(Function));
     });
@@ -220,11 +220,11 @@ describe("DocshunterServer", () => {
       });
 
       expect(() => {
-        server = new DocshunterServer();
+        server = new PerplexityServer();
       }).toThrow("Database setup failed");
 
       expect(mockLogError).toHaveBeenCalledWith(
-        "Error in DocshunterServer constructor:",
+        "Error in PerplexityServer constructor:",
         expect.objectContaining({
           error: "Database setup failed",
           stack: expect.any(String),
@@ -239,7 +239,7 @@ describe("DocshunterServer", () => {
         throw new Error("process.exit called");
       });
 
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       // Get the SIGINT handler that was registered with proper typing
       const processOnCalls = vi.mocked(process.on).mock.calls;
@@ -268,7 +268,7 @@ describe("DocshunterServer", () => {
 
   describe("Tool Registry", () => {
     it("should create tool handlers registry correctly", () => {
-      server = new DocshunterServer();
+      server = new PerplexityServer();
 
       expect(mockCreateToolHandlersRegistry).toHaveBeenCalledWith(
         expect.objectContaining({

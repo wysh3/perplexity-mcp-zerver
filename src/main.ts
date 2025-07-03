@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { DocshunterServer } from "./server/DocshunterServer.js";
+import { PerplexityServer } from "./server/PerplexityServer.js";
 
 // Create and start the server
-const server = new DocshunterServer();
+const server = new PerplexityServer();
 await server.run();

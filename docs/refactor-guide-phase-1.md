@@ -1,4 +1,4 @@
-# 🟢 Docshunter Refactor Guide: Phase 1 – Modularization
+# 🟢 perplexity Refactor Guide: Phase 1 – Modularization
 
 > _**STATUS: ✅ PHASE 1 COMPLETE + FULLY OPERATIONAL** - All modularization goals achieved + MCP connection issues resolved + all tools functional as of 2025-05-23_
 
@@ -20,7 +20,7 @@ Resolve critical MCP protocol connection issues and ensure all tools are fully f
 **🔧 Technical Fixes Applied:**
 
 - ✅ Updated `.cursor/mcp.json` with absolute Node.js path: `~/.local/share/mise/installs/node/22.15.1/bin/node`
-- ✅ Moved all `console.log` to `console.error` in `toolHandlerSetup.ts` and `DocshunterServer.ts`
+- ✅ Moved all `console.log` to `console.error` in `toolHandlerSetup.ts` and `perplexityServer.ts`
 - ✅ Refactored `initializeBrowser()` to separate from `navigateToPerplexity()`
 - ✅ Added proper browser cleanup and error context in initialization failures
 - ✅ Enhanced `performSearch()` with conditional navigation and better error handling
@@ -36,8 +36,8 @@ Keep `src/index.ts` minimal. Move server creation/config logic into `src/server/
 
 **✅ Completed Implementation:**
 
-- ✅ `src/main.ts` - Minimal entry point that creates and starts DocshunterServer
-- ✅ `src/server/DocshunterServer.ts` - Complete MCP server implementation with enhanced features
+- ✅ `src/main.ts` - Minimal entry point that creates and starts perplexityServer
+- ✅ `src/server/perplexityServer.ts` - Complete MCP server implementation with enhanced features
 - ✅ `src/server/config.ts` - Centralized configuration constants
 - ✅ `src/server/toolHandlerSetup.ts` - Modular tool registration and handling
 
@@ -98,7 +98,7 @@ Rename and update your main class to match project naming, and import new module
 
 **✅ Completed Implementation:**
 
-- ✅ Class renamed from `PerplexityMCPServer` to `DocshunterServer`
+- ✅ Class renamed from `PerplexityMCPServer` to `perplexityServer`
 - ✅ All imports and dependencies properly wired
 - ✅ Complete MCP protocol implementation
 - ✅ All 6 tool handlers connected and operational
@@ -290,7 +290,7 @@ Keep your project always green and enforce standards.
 | 2    | Modularize utils with enhancements                 | ✅      |
 | 3    | Modularize tool handlers                           | ✅      |
 | 4    | ~~Create Zod schemas~~ **Fix Zod implementation**  | ❌      |
-| 5    | Rename main class to `DocshunterServer`            | ✅      |
+| 5    | Rename main class to `perplexityServer`            | ✅      |
 | 6    | Update all imports and tool registration           | ✅      |
 | 7    | Add example tests for tools/utils/schemas          | ❌      |
 | 8    | Update documentation (`README.md`, best practices) | ✅      |
@@ -379,7 +379,7 @@ Keep your project always green and enforce standards.
 
 ## 🏆 **CURRENT STATE: PRODUCTION READY + FULLY OPERATIONAL**
 
-All Phase 1 modularization objectives have been achieved **plus critical runtime issues resolved**. The DocshunterServer is fully functional with:
+All Phase 1 modularization objectives have been achieved **plus critical runtime issues resolved**. The perplexityServer is fully functional with:
 
 - ✅ **6 operational tool handlers** with enhanced capabilities **+ verified working in Cursor**
 - ✅ **Complete MCP protocol implementation** with connection issues resolved
@@ -429,7 +429,7 @@ All Phase 1 modularization objectives have been achieved **plus critical runtime
 3. **Browser Architecture** - Separated initialization from navigation for reliability
 4. **Error Context** - Enhanced error messages and cleanup procedures
 
-**🏆 RESULT: DocshunterServer fully operational in production environment!**
+**🏆 RESULT: perplexityServer fully operational in production environment!**
 
 **Tools Verified Working:**
 

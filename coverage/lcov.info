@@ -407,9 +407,9 @@ BRF:0
 BRH:0
 end_of_record
 TN:
-SF:src/server/DocshunterServer.ts
+SF:src/server/PerplexityServer.ts
 FN:23,<instance_members_initializer>
-FN:29,DocshunterServer
+FN:29,PerplexityServer
 FN:70,setupShutdownHandler
 FN:86,cleanup
 FN:99,handleChatPerplexity
@@ -427,7 +427,7 @@ FN:226,getDatabaseManager
 FNF:16
 FNH:5
 FNDA:8,<instance_members_initializer>
-FNDA:8,DocshunterServer
+FNDA:8,PerplexityServer
 FNDA:6,setupShutdownHandler
 FNDA:1,cleanup
 FNDA:0,handleChatPerplexity
