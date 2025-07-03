@@ -30,7 +30,7 @@ export class PerplexityServer {
     try {
       // Initialize MCP Server
       this.server = new Server(
-        { name: "docshunter", version: "0.2.0" },
+        { name: "perplexity-server", version: "0.2.0" },
         {
           capabilities: {
             tools: {
