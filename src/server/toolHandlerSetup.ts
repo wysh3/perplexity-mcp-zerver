@@ -22,7 +22,6 @@ import { logError, logWarn } from "../utils/logging.js";
  * @param toolHandlers - Registry of tool handler functions
  */
 export function setupToolHandlers(server: Server, toolHandlers: ToolHandlersRegistry): void {
-
   // Register ListTools handler
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
