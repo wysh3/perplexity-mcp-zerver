@@ -1,0 +1,29 @@
+version: 2
+updates:
+# npm dependencies (including pnpm/yarn, if present)
+- package-ecosystem: "npm"
+  directory: "/" # Location of package.json
+  schedule:
+    interval: "daily"
+  open-pull-requests-limit: 5
+  groups:
+    dev-dependencies:
+      dependency-type: "development"
+    prod-dependencies:
+      dependency-type: "production"
+  labels:
+  - "dependencies"
+  - "actions"
+  - "automated"
+  allow:
+  - dependency-type: "all"
+
+# GitHub Actions dependencies
+- package-ecosystem: "github-actions"
+  directory: "/" # Location of workflow files
+  schedule:
+    interval: "daily"
+  open-pull-requests-limit: 5
+  labels:
+  - "actions"
+  - "automated"

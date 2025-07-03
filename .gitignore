@@ -1,8 +1,8 @@
 # Dependencies
-node_modules/
+node_modules/**
 
 # Build files
-/build
+build/
 
 # Environment variables
 .env
@@ -19,8 +19,27 @@ logs/
 # Local database
 chat_history.db
 
-# Lock files
+# Lock file (User requested)
 package-lock.json
-pnpm-lock.yaml
-pnpm-workspace.yaml
+
+# Local Dev
+memory-bank/
+docs/zeugs/
+.repomix/
+.cursor/
+.cursor*
 .aider*
+# Coverage
+node_modules/
+coverage/*.css
+coverage/*.js
+coverage/*.png
+coverage/index.html
+coverage/lcov-report/
+coverage/utils/
+coverage/types/
+coverage/tools/
+coverage/server/
+coverage/schema/
+!coverage/lcov.info
+coverage/coverage-final.json
