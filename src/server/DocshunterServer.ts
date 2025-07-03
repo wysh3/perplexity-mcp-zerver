@@ -1,5 +1,5 @@
 /**
- * DocshunterServer - Modular, testable architecture
+ * PerplexityServer - Modular, testable architecture
  * Uses dependency injection and focused modules for better testability
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -20,7 +20,7 @@ import { createToolHandlersRegistry, setupToolHandlers } from "./toolHandlerSetu
 import chatPerplexity from "../tools/chatPerplexity.js";
 import extractUrlContent from "../tools/extractUrlContent.js";
 
-export class DocshunterServer {
+export class PerplexityServer {
   private readonly server: Server;
   private readonly browserManager: IBrowserManager;
   private readonly searchEngine: ISearchEngine;
