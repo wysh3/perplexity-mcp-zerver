@@ -1,9 +1,9 @@
+import type { Page } from "puppeteer";
 /**
  * Tests for SearchEngine module
  * Comprehensive testing to achieve high code coverage
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Page } from "puppeteer";
 import type { IBrowserManager } from "../../../types/index.js";
 import { SearchEngine } from "../SearchEngine.js";
 

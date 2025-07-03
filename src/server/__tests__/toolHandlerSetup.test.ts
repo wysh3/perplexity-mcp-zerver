@@ -4,8 +4,8 @@ import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
  * Tests the MCP tool registration and handler management
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createToolHandlersRegistry, setupToolHandlers } from "../toolHandlerSetup.js";
 import type { ToolHandler, ToolHandlersRegistry } from "../../types/index.js";
+import { createToolHandlersRegistry, setupToolHandlers } from "../toolHandlerSetup.js";
 
 // Create a properly typed mock server that matches the MCP Server interface
 const createMockServer = (): Server => {

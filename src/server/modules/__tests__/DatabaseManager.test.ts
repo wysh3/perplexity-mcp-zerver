@@ -1,11 +1,11 @@
+import { existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import type Database from "better-sqlite3";
 /**
  * Tests for DatabaseManager module
  * Comprehensive testing to achieve high code coverage
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
-import type Database from "better-sqlite3";
 import type { ChatMessage, IDatabaseManager } from "../../../types/index.js";
 import { DatabaseManager } from "../DatabaseManager.js";
 
