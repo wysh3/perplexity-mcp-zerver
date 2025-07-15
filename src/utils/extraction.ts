@@ -44,7 +44,7 @@ async function performContentTypeCheck(
   try {
     ctx.log("info", `Performing HEAD request for ${extractionUrl}...`);
     const headResponse = await axios.head(extractionUrl, {
-      timeout: 10000,
+      timeout: 5000, // Reduced from 10000
       headers: { "User-Agent": CONFIG.USER_AGENT },
     });
     const contentType = headResponse.headers["content-type"];

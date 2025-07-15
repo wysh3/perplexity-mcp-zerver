@@ -107,35 +107,27 @@ async function waitForAndValidateSearchInput(ctx: PuppeteerContext): Promise<voi
   const { page } = ctx;
   if (!page) throw new Error("Page not initialized");
 
-  logInfo("Navigation initiated, waiting for search input to confirm readiness...");
   const searchInput = await waitForSearchInput(ctx);
   if (!searchInput) {
-    logError("Search input not found after navigation, taking screenshot for debugging");
-    if (!page.isClosed()) {
-      await page.screenshot({ path: "debug_no_search_input.png", fullPage: true });
-    }
+    logError("Search input not found after navigation");
     throw new Error(
       "Search input not found after navigation - page might not have loaded correctly",
     );
   }
-  logInfo("Search input found, page appears ready.");
 }
 
 async function validateFinalPageState(page: Page): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-  let pageTitle = "N/A";
+  // Optimized: Skip the 3-second wait and just validate URL quickly
   let pageUrl = "N/A";
 
   try {
     if (!page.isClosed()) {
-      pageTitle = await page.title();
       pageUrl = page.url();
     }
   } catch (titleError) {
-    logWarn(`Could not retrieve page title/URL after navigation: ${titleError}`);
+    // Skip logging minor errors
   }
 
-  logInfo(`Page loaded: ${pageUrl} (${pageTitle})`);
   if (pageUrl !== "N/A" && !pageUrl.includes("perplexity.ai")) {
     logError(`Unexpected URL: ${pageUrl}`);
     throw new Error(`Navigation redirected to unexpected URL: ${pageUrl}`);
@@ -263,11 +255,33 @@ export async function waitForSearchInput(
 ): Promise<string | null> {
   const { page, setSearchInputSelector } = ctx;
   if (!page) return null;
-  const possibleSelectors = getSearchInputSelectors();
-  for (const selector of possibleSelectors) {
+  
+  // Optimized: Try the most common selector first with shorter timeout
+  const primarySelector = '[role="textbox"]';
+  try {
+    const element = await page.waitForSelector(primarySelector, {
+      timeout: 2000,
+      visible: true,
+    });
+    if (element) {
+      const isInteractive = await page.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        return el && !el.hasAttribute("disabled") && el.getAttribute("aria-hidden") !== "true";
+      }, primarySelector);
+      if (isInteractive) {
+        setSearchInputSelector(primarySelector);
+        return primarySelector;
+      }
+    }
+  } catch {
+    // Fall back to other selectors only if primary fails
+  }
+
+  const fallbackSelectors = getSearchInputSelectors().filter(s => s !== primarySelector);
+  for (const selector of fallbackSelectors) {
     try {
       const element = await page.waitForSelector(selector, {
-        timeout: 5000,
+        timeout: 1500, // Reduced timeout for fallbacks
         visible: true,
       });
       if (element) {
@@ -276,16 +290,15 @@ export async function waitForSearchInput(
           return el && !el.hasAttribute("disabled") && el.getAttribute("aria-hidden") !== "true";
         }, selector);
         if (isInteractive) {
-          logInfo(`Found working search input: ${selector}`);
           setSearchInputSelector(selector);
           return selector;
         }
       }
-    } catch (error) {
-      logWarn(`Selector '${selector}' not found or not interactive`);
+    } catch {
+      // Continue to next selector without logging
     }
   }
-  await page.screenshot({ path: "debug_search_not_found.png", fullPage: true });
+  
   logError("No working search input found");
   return null;
 }
@@ -468,7 +481,7 @@ async function handleCaptchaDetection(ctx: PuppeteerContext): Promise<boolean> {
     if (captchaDetected) {
       logError("CAPTCHA detected! Initiating recovery...");
       await recoveryProcedure(ctx);
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced from 3000
       return true;
     }
   } catch (captchaCheckError) {

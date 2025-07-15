@@ -10,7 +10,7 @@ import type {
   ISearchEngine,
   ServerDependencies,
 } from "../types/index.js";
-import { logError, logInfo } from "../utils/logging.js";
+import { logError, logInfo, logWarn } from "../utils/logging.js";
 import { BrowserManager } from "./modules/BrowserManager.js";
 import { DatabaseManager } from "./modules/DatabaseManager.js";
 import { SearchEngine } from "./modules/SearchEngine.js";
@@ -156,14 +156,20 @@ export class PerplexityServer {
   private async handleExtractUrlContent(args: Record<string, unknown>): Promise<string> {
     const typedArgs = args as { url: string; depth?: number };
 
-    // For now, use the original implementation
-    // In the future, this could be moved to a ContentExtractor module
-    return await extractUrlContent(
-      typedArgs,
-      {} as never, // Context not needed
-      async () => "Placeholder implementation", // Simplified for now
-      async () => {}, // Simplified for now
-    );
+    // Ensure browser is initialized
+    if (!this.browserManager.isReady()) {
+      await this.browserManager.initialize();
+    }
+
+    // Create PuppeteerContext from BrowserManager
+    const ctx = this.createPuppeteerContext();
+
+    return await extractUrlContent(typedArgs, ctx);
+  }
+
+  private createPuppeteerContext() {
+    const browserManager = this.browserManager as any; // Access the getPuppeteerContext method
+    return browserManager.getPuppeteerContext();
   }
 
   private setupToolHandlers(): void {

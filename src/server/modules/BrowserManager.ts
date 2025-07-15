@@ -15,16 +15,16 @@ import {
 } from "../../utils/puppeteer.js";
 
 export class BrowserManager implements IBrowserManager {
-  private browser: Browser | null = null;
-  private page: Page | null = null;
-  private isInitializing = false;
-  private searchInputSelector = 'textarea[placeholder*="Ask"]';
-  private readonly lastSearchTime = 0;
-  private idleTimeout: NodeJS.Timeout | null = null;
-  private operationCount = 0;
-  private readonly IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+  public browser: Browser | null = null;
+  public page: Page | null = null;
+  public isInitializing = false;
+  public searchInputSelector = 'textarea[placeholder*="Ask"]';
+  public readonly lastSearchTime = 0;
+  public idleTimeout: NodeJS.Timeout | null = null;
+  public operationCount = 0;
+  public readonly IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
-  private getPuppeteerContext(): PuppeteerContext {
+  public getPuppeteerContext(): PuppeteerContext {
     return {
       browser: this.browser,
       page: this.page,
