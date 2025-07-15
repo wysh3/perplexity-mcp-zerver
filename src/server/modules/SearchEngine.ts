@@ -74,9 +74,9 @@ export class SearchEngine implements ISearchEngine {
       });
     }
 
-    // Type the query with human-like delay
+    // Type the query with minimal delay for speed
     // Note: Math.random() is safe here - only used for anti-detection timing, not security
-    const typeDelay = Math.floor(Math.random() * 20) + 20; // 20-40ms delay
+    const typeDelay = Math.floor(Math.random() * 10) + 5; // 5-15ms delay (reduced from 20-40ms)
     await page.type(selector, query, { delay: typeDelay });
     await page.keyboard.press("Enter");
 

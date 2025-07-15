@@ -115,52 +115,44 @@ export function calculateRetryDelay(
 }
 
 /**
- * Generate browser launch arguments
+ * Generate optimized browser launch arguments for speed
  */
 export function generateBrowserArgs(userAgent: string): string[] {
   return [
+    // Essential security flags
     "--no-sandbox",
     "--disable-setuid-sandbox",
-    "--disable-blink-features=AutomationControlled",
-    "--window-size=1920,1080",
-    "--disable-accelerated-2d-canvas",
-    "--disable-gpu",
     "--disable-dev-shm-usage",
-    "--disable-web-security",
-    "--disable-features=IsolateOrigins,site-per-process",
-    "--disable-blink-features=AutomationControlled",
-    "--disable-infobars",
-    "--disable-notifications",
-    "--disable-popup-blocking",
-    "--disable-default-apps",
-    "--disable-extensions",
-    "--disable-translate",
-    "--disable-sync",
-    "--disable-background-networking",
-    "--disable-client-side-phishing-detection",
-    "--disable-component-update",
-    "--disable-hang-monitor",
-    "--disable-prompt-on-repost",
-    "--disable-domain-reliability",
-    "--disable-renderer-backgrounding",
+    
+    // Performance optimizations
+    "--disable-gpu",
+    "--disable-software-rasterizer",
     "--disable-background-timer-throttling",
     "--disable-backgrounding-occluded-windows",
-    "--disable-breakpad",
-    "--disable-component-extensions-with-background-pages",
-    "--disable-ipc-flooding-protection",
-    "--disable-back-forward-cache",
-    "--disable-partial-raster",
-    "--disable-skia-runtime-opts",
-    "--disable-smooth-scrolling",
-    "--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees",
-    "--enable-features=NetworkService,NetworkServiceInProcess",
-    "--force-color-profile=srgb",
-    "--metrics-recording-only",
-    "--mute-audio",
+    "--disable-renderer-backgrounding",
+    "--disable-features=TranslateUI,BlinkGenPropertyTrees",
+    
+    // Reduce resource usage
+    "--disable-extensions",
+    "--disable-plugins",
+    "--disable-images", // Skip loading images for faster page loads
+    "--disable-default-apps",
+    "--disable-sync",
+    
+    // Network optimizations
+    "--aggressive-cache-discard",
+    "--disable-background-networking",
+    "--disable-component-update",
+    
+    // UI optimizations
+    "--window-size=1280,720", // Smaller window for faster rendering
+    "--disable-infobars",
+    "--disable-notifications",
     "--no-first-run",
     "--no-default-browser-check",
-    "--remote-debugging-port=0",
-    "--use-mock-keychain",
+    
+    // Anti-detection (minimal set)
+    "--disable-blink-features=AutomationControlled",
     `--user-agent=${userAgent}`,
   ];
 }

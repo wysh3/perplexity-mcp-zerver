@@ -481,7 +481,7 @@ async function handleCaptchaDetection(ctx: PuppeteerContext): Promise<boolean> {
     if (captchaDetected) {
       logError("CAPTCHA detected! Initiating recovery...");
       await recoveryProcedure(ctx);
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced from 3000
       return true;
     }
   } catch (captchaCheckError) {

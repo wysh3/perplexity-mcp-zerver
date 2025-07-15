@@ -15,7 +15,7 @@ async function performHttpRequest(url: string, ctx: PuppeteerContext) {
   ctx?.log?.("info", `Simple fetch starting for: ${url}`);
 
   const response = await axios.get(url, {
-    timeout: 15000,
+    timeout: 8000, // Reduced from 15000
     headers: {
       "User-Agent": CONFIG.USER_AGENT,
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -25,6 +25,7 @@ async function performHttpRequest(url: string, ctx: PuppeteerContext) {
       "Upgrade-Insecure-Requests": "1",
     },
     validateStatus: (status) => status >= 200 && status < 400, // Accept 2xx and 3xx
+    maxRedirects: 3, // Limit redirects for faster response
   });
 
   return response;
