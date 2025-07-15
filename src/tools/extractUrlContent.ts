@@ -3,11 +3,10 @@
  * Extracts main article text content from a given URL, optionally recursively exploring links up to a specified depth.
  * @param args - { url: string; depth?: number }
  * @param ctx - PuppeteerContext for browser operations
- * @param fetchSinglePageContent - Function to extract content from a single page
- * @param recursiveFetch - Function to perform recursive content extraction
  * @returns The extraction result as a JSON string
  */
 import type { PageContentResult, PuppeteerContext } from "../types/index.js";
+import { fetchSinglePageContent, recursiveFetch } from "../utils/extraction.js";
 
 // Helper functions for content extraction
 function createTimeoutSetup(
@@ -101,22 +100,14 @@ function formatErrorResult(
 export default async function extractUrlContent(
   args: { url: string; depth?: number },
   ctx: PuppeteerContext,
-  fetchSinglePageContent: (url: string, ctx: PuppeteerContext) => Promise<string>,
-  recursiveFetch: (
-    startUrl: string,
-    maxDepth: number,
-    currentDepth: number,
-    visitedUrls: Set<string>,
-    results: PageContentResult[],
-    globalTimeoutSignal: { timedOut: boolean },
-    ctx: PuppeteerContext,
-  ) => Promise<void>,
 ): Promise<string> {
   const { url, depth = 1 } = args;
   const validatedDepth = Math.max(1, Math.min(depth, 5));
 
   if (validatedDepth === 1) {
-    return await fetchSinglePageContent(url, ctx);
+    // For single page extraction, return the result directly as a string
+    const result = await fetchSinglePageContent(url, ctx);
+    return JSON.stringify(result, null, 2);
   }
 
   // Recursive fetch logic
