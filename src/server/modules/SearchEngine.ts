@@ -74,9 +74,9 @@ export class SearchEngine implements ISearchEngine {
       });
     }
 
-    // Type the query with human-like delay
+    // Type the query with minimal delay for speed
     // Note: Math.random() is safe here - only used for anti-detection timing, not security
-    const typeDelay = Math.floor(Math.random() * 20) + 20; // 20-40ms delay
+    const typeDelay = Math.floor(Math.random() * 10) + 5; // 5-15ms delay (reduced from 20-40ms)
     await page.type(selector, query, { delay: typeDelay });
     await page.keyboard.press("Enter");
 
@@ -119,7 +119,6 @@ export class SearchEngine implements ISearchEngine {
   private async extractCompleteAnswer(page: Page): Promise<string> {
     return await page.evaluate(async () => {
       // Security: URL scheme blocklist for preventing code injection attacks
-      // These schemes are blocked to prevent XSS and code execution vulnerabilities
       const BLOCKED_URL_SCHEMES = [
         "java" + "script:", // Prevents eval-like code execution
         "data:", // Prevents data URI attacks
@@ -129,8 +128,6 @@ export class SearchEngine implements ISearchEngine {
 
       const isSafeUrl = (href: string): boolean => {
         if (!href) return false;
-
-        // Security check: Block URLs that start with dangerous schemes
         for (const blockedScheme of BLOCKED_URL_SCHEMES) {
           if (href.startsWith(blockedScheme)) {
             return false;
@@ -143,142 +140,68 @@ export class SearchEngine implements ISearchEngine {
         const elements = Array.from(document.querySelectorAll(".prose"));
         const answerText = elements.map((el) => (el as HTMLElement).innerText.trim()).join("\n\n");
 
-        // Extract all URLs from the answer
-        const links = Array.from(document.querySelectorAll(".prose a[href]"));
+        // Extract URLs only if answer is substantial
+        if (answerText.length > 100) {
+          const links = Array.from(document.querySelectorAll(".prose a[href]"));
+          const urls = links
+            .map((link) => (link as HTMLAnchorElement).href)
+            .filter(isSafeUrl)
+            .map((href) => href.trim());
 
-        const urls = links
-          .map((link) => (link as HTMLAnchorElement).href)
-          .filter(isSafeUrl)
-          .map((href) => href.trim());
-
-        // Combine text and URLs
-        if (urls.length > 0) {
-          const formattedUrls = urls.map((url) => `- ${url}`).join("\n");
-          return `${answerText}\n\nURLs:\n${formattedUrls}`;
+          if (urls.length > 0) {
+            const formattedUrls = urls.map((url) => `- ${url}`).join("\n");
+            return `${answerText}\n\nURLs:\n${formattedUrls}`;
+          }
         }
         return answerText;
       };
 
-      const checkStabilityBreakCondition = (
-        currentLength: number,
-        stabilityCounter: number,
-      ): boolean => {
-        if (currentLength > 1000 && stabilityCounter >= 3) {
-          console.error("Long answer stabilized, exiting early");
-          return true;
-        }
-        if (currentLength > 500 && stabilityCounter >= 4) {
-          console.error("Medium answer stabilized, exiting");
-          return true;
-        }
-        if (stabilityCounter >= 5) {
-          console.error("Short answer stabilized, exiting");
-          return true;
-        }
-        return false;
-      };
-
-      const updateCounters = (
-        currentAnswer: string,
-        currentLength: number,
-        lastAnswer: string,
-        lastLength: number,
-        stabilityCounter: number,
-        noChangeCounter: number,
-      ) => {
-        if (currentLength > lastLength) {
-          return {
-            newLastLength: currentLength,
-            newStabilityCounter: 0,
-            newNoChangeCounter: 0,
-          };
-        }
-
-        if (currentAnswer === lastAnswer) {
-          return {
-            newLastLength: lastLength,
-            newStabilityCounter: stabilityCounter + 1,
-            newNoChangeCounter: noChangeCounter + 1,
-          };
-        }
-
-        return {
-          newLastLength: lastLength,
-          newStabilityCounter: 0,
-          newNoChangeCounter: noChangeCounter + 1,
-        };
-      };
-
-      const checkCompletionIndicators = (): boolean => {
-        const lastProse = document.querySelector(".prose:last-child");
-        return (
-          (lastProse?.textContent?.includes(".") ||
-            lastProse?.textContent?.includes("?") ||
-            lastProse?.textContent?.includes("!")) ??
-          false
-        );
-      };
-
-      const shouldExitEarly = (noChangeCounter: number, currentLength: number): boolean => {
-        if (noChangeCounter >= 10 && currentLength > 200) {
-          console.error("Content stopped growing but has sufficient information");
-          return true;
-        }
-        return false;
-      };
-
-      const shouldExitOnCompletion = (
-        isComplete: boolean,
-        stabilityCounter: number,
-        currentLength: number,
-      ): boolean => {
-        if (isComplete && stabilityCounter >= 2 && currentLength > 100) {
-          console.error("Completion indicators found, exiting");
-          return true;
-        }
-        return false;
-      };
-
+      // Optimized: Much faster extraction with early exits
       let lastAnswer = "";
-      let lastLength = 0;
       let stabilityCounter = 0;
-      let noChangeCounter = 0;
-      const maxAttempts = 60;
-      const checkInterval = 600;
+      const maxAttempts = 20; // Reduced from 60
+      const checkInterval = 400; // Reduced from 600ms
 
       for (let i = 0; i < maxAttempts; i++) {
         await new Promise((resolve) => setTimeout(resolve, checkInterval));
         const currentAnswer = getAnswer();
         const currentLength = currentAnswer.length;
 
-        if (currentLength > 0) {
-          const counters = updateCounters(
-            currentAnswer,
-            currentLength,
-            lastAnswer,
-            lastLength,
-            stabilityCounter,
-            noChangeCounter,
-          );
-
-          lastLength = counters.newLastLength;
-          stabilityCounter = counters.newStabilityCounter;
-          noChangeCounter = counters.newNoChangeCounter;
+        // Early exit if we have substantial content
+        if (currentLength > 500) {
+          // Check if content has stabilized
+          if (currentAnswer === lastAnswer) {
+            stabilityCounter++;
+            if (stabilityCounter >= 2) { // Reduced from 3-5
+              break;
+            }
+          } else {
+            stabilityCounter = 0;
+            lastAnswer = currentAnswer;
+          }
+        } else if (currentLength > 200) {
+          // For medium content, be less strict
+          if (currentAnswer === lastAnswer) {
+            stabilityCounter++;
+            if (stabilityCounter >= 3) {
+              break;
+            }
+          } else {
+            stabilityCounter = 0;
+            lastAnswer = currentAnswer;
+          }
+        } else if (currentLength > 0) {
+          // For any content, update tracking
           lastAnswer = currentAnswer;
-
-          // Check various exit conditions
-          if (checkStabilityBreakCondition(currentLength, stabilityCounter)) {
-            break;
-          }
-
-          if (shouldExitEarly(noChangeCounter, currentLength)) {
-            break;
-          }
         }
 
-        const isComplete = checkCompletionIndicators();
-        if (shouldExitOnCompletion(isComplete, stabilityCounter, currentLength)) {
-          break;
+        // Quick completion check - exit if we see sentence endings
+        if (currentLength > 100) {
+          const lastProse = document.querySelector(".prose:last-child");
+          const text = lastProse?.textContent || "";
+          if (text.match(/[.!?]\s*$/)) {
+            break;
+          }
         }
       }
 
