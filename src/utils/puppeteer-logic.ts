@@ -115,7 +115,7 @@ export function calculateRetryDelay(
 }
 
 /**
- * Generate optimized browser launch arguments for speed
+ * Generate comprehensive browser launch arguments optimized for Cloudflare bypass
  */
 export function generateBrowserArgs(userAgent: string): string[] {
   return [
@@ -123,36 +123,52 @@ export function generateBrowserArgs(userAgent: string): string[] {
     "--no-sandbox",
     "--disable-setuid-sandbox",
     "--disable-dev-shm-usage",
+    "--disable-web-security",
     
-    // Performance optimizations
-    "--disable-gpu",
-    "--disable-software-rasterizer",
-    "--disable-background-timer-throttling",
-    "--disable-backgrounding-occluded-windows",
-    "--disable-renderer-backgrounding",
-    "--disable-features=TranslateUI,BlinkGenPropertyTrees",
-    
-    // Reduce resource usage
-    "--disable-extensions",
-    "--disable-plugins",
-    "--disable-images", // Skip loading images for faster page loads
-    "--disable-default-apps",
-    "--disable-sync",
-    
-    // Network optimizations
-    "--aggressive-cache-discard",
-    "--disable-background-networking",
-    "--disable-component-update",
-    
-    // UI optimizations
-    "--window-size=1280,720", // Smaller window for faster rendering
+    // Enhanced anti-detection for Cloudflare
+    "--disable-blink-features=AutomationControlled",
+    "--disable-features=IsolateOrigins,site-per-process",
     "--disable-infobars",
     "--disable-notifications",
+    "--disable-popup-blocking",
+    "--disable-default-apps",
+    "--disable-extensions",
+    "--disable-translate",
+    "--disable-sync",
+    "--disable-background-networking",
+    "--disable-client-side-phishing-detection",
+    "--disable-component-update",
+    "--disable-hang-monitor",
+    "--disable-prompt-on-repost",
+    "--disable-domain-reliability",
+    "--disable-renderer-backgrounding",
+    "--disable-background-timer-throttling",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-breakpad",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-ipc-flooding-protection",
+    "--disable-back-forward-cache",
+    "--disable-partial-raster",
+    "--disable-skia-runtime-opts",
+    "--disable-smooth-scrolling",
+    "--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees",
+    "--enable-features=NetworkService,NetworkServiceInProcess",
+    
+    // Performance and resource optimizations
+    "--disable-accelerated-2d-canvas",
+    "--disable-gpu",
+    "--force-color-profile=srgb",
+    "--metrics-recording-only",
+    "--mute-audio",
     "--no-first-run",
     "--no-default-browser-check",
+    "--remote-debugging-port=0",
+    "--use-mock-keychain",
     
-    // Anti-detection (minimal set)
-    "--disable-blink-features=AutomationControlled",
+    // Window and viewport settings for realistic behavior
+    "--window-size=1920,1080",
+    
+    // User agent
     `--user-agent=${userAgent}`,
   ];
 }
@@ -172,17 +188,50 @@ export function getSearchInputSelectors(): string[] {
 }
 
 /**
- * CAPTCHA detection selectors
+ * Comprehensive CAPTCHA and Cloudflare challenge detection selectors
  */
 export function getCaptchaSelectors(): string[] {
   return [
+    // Generic CAPTCHA selectors
     '[class*="captcha"]',
     '[id*="captcha"]',
     'iframe[src*="captcha"]',
     'iframe[src*="recaptcha"]',
+    
+    // Cloudflare Turnstile specific
     'iframe[src*="turnstile"]',
+    '[class*="turnstile"]',
+    '[id*="turnstile"]',
+    
+    // Cloudflare challenge page selectors
     "#challenge-running",
     "#challenge-form",
+    ".challenge-running",
+    ".challenge-form",
+    '[class*="challenge"]',
+    '[id*="challenge"]',
+    
+    // Cloudflare specific elements
+    '.cf-browser-verification',
+    '.cf-checking-browser',
+    '.cf-under-attack',
+    '#cf-wrapper',
+    '.cf-im-under-attack',
+    
+    // Additional Cloudflare patterns
+    '[data-ray]', // Cloudflare Ray ID indicator
+    '.ray-id',
+    '#cf-error-details',
+    '.cf-error-overview',
+    
+    // Bot detection indicators
+    '[class*="bot-detection"]',
+    '[class*="security-check"]',
+    '[class*="verification"]',
+    
+    // Generic challenge indicators
+    'body[class*="challenge"]',
+    'html[class*="challenge"]',
   ];
 }
 

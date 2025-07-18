@@ -26,7 +26,18 @@ vi.mock("../../../utils/logging.js", () => ({
 vi.mock("../../config.js", () => ({
   CONFIG: {
     SELECTOR_TIMEOUT: 5000,
+    PAGE_TIMEOUT: 180000,
+    MCP_TIMEOUT_BUFFER: 60000,
+    MAX_RETRIES: 10,
   },
+}));
+
+// Mock retryOperation
+vi.mock("../../../utils/puppeteer.js", () => ({
+  retryOperation: vi.fn().mockImplementation(async (ctx, operation) => {
+    // Simply execute the operation once for testing
+    return await operation();
+  }),
 }));
 
 import * as logging from "../../../utils/logging.js";
@@ -48,6 +59,10 @@ describe("SearchEngine", () => {
       click: vi.fn(),
       type: vi.fn(),
       waitForSelector: vi.fn(),
+      screenshot: vi.fn(),
+      mainFrame: vi.fn().mockReturnValue({
+        isDetached: vi.fn().mockReturnValue(false),
+      }),
       keyboard: {
         press: vi.fn(),
       },
@@ -65,6 +80,24 @@ describe("SearchEngine", () => {
       checkForCaptcha: vi.fn(),
       cleanup: vi.fn(),
       getBrowser: vi.fn(),
+      getPuppeteerContext: vi.fn().mockReturnValue({
+        browser: null,
+        page: mockPage,
+        isInitializing: false,
+        searchInputSelector: 'textarea[placeholder*="Ask"]',
+        lastSearchTime: 0,
+        idleTimeout: null,
+        operationCount: 0,
+        log: vi.fn(),
+        setBrowser: vi.fn(),
+        setPage: vi.fn(),
+        setIsInitializing: vi.fn(),
+        setSearchInputSelector: vi.fn(),
+        setIdleTimeout: vi.fn(),
+        incrementOperationCount: vi.fn().mockReturnValue(1),
+        determineRecoveryLevel: vi.fn().mockReturnValue(1),
+        IDLE_TIMEOUT_MS: 300000,
+      }),
     };
 
     searchEngine = new SearchEngine(mockBrowserManager);
@@ -125,7 +158,7 @@ describe("SearchEngine", () => {
 
       const result = await searchEngine.performSearch(testQuery);
 
-      expect(result).toContain("search operation could not be completed");
+      expect(result).toContain("technical issue");
       expect(mockBrowserManager.performRecovery).toHaveBeenCalled();
     });
 

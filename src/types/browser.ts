@@ -133,6 +133,7 @@ export interface IBrowserManager {
   getPage(): Page | null;
   getBrowser(): Browser | null;
   resetIdleTimeout(): void;
+  getPuppeteerContext(): PuppeteerContext;
 }
 
 // ─── CONTENT EXTRACTION TYPES ─────────────────────────────────────────

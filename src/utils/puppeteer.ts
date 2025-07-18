@@ -35,8 +35,8 @@ export async function initializeBrowser(ctx: PuppeteerContext) {
     ctx.setPage(page);
     await setupBrowserEvasion(ctx);
     await page.setViewport({
-      width: 1280,
-      height: 720,
+      width: 1920,
+      height: 1080,
       deviceScaleFactor: 1,
       isMobile: false,
       hasTouch: false,
@@ -420,25 +420,78 @@ export async function recoveryProcedure(ctx: PuppeteerContext, error?: Error): P
 
   try {
     switch (recoveryLevel) {
-      case 1:
-        await performPageRefresh(ctx);
-        break;
-      case 2:
-        recoveryLevel = await performNewPageCreation(ctx);
-        if (recoveryLevel === 3) {
-          // Escalated to full restart
-          await performFullBrowserRestart(ctx);
+      case 1: // Page refresh
+        logInfo("Attempting page refresh (Recovery Level 1)");
+        if (ctx.page && !ctx.page?.isClosed()) {
+          try {
+            await ctx.page.reload({ timeout: CONFIG.TIMEOUT_PROFILES.navigation });
+          } catch (reloadError) {
+            logWarn(`Page reload failed: ${reloadError instanceof Error ? reloadError.message : String(reloadError)}. Proceeding with recovery.`);
+          }
+        } else {
+          logWarn("Page was null or closed, cannot refresh. Proceeding with recovery.");
         }
         break;
-      case 3:
-        await performFullBrowserRestart(ctx);
+
+      case 2: // New page (Currently unused due to level escalation, kept for potential future use)
+        logInfo("Creating new page instance (Recovery Level 2)");
+        if (ctx.page) {
+          try {
+            if (!ctx.page?.isClosed()) await ctx.page.close();
+          } catch (closeError) {
+            logWarn(`Ignoring error closing old page: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+          }
+          ctx.setPage(null);
+        }
+        if (ctx.browser && ctx.browser.isConnected()) {
+          try {
+            const page = await ctx.browser.newPage();
+            ctx.setPage(page);
+            await setupBrowserEvasion(ctx);
+            await page.setViewport({ width: 1920, height: 1080 });
+            await page.setUserAgent(CONFIG.USER_AGENT);
+          } catch (newPageError) {
+            logError(`Failed to create new page: ${newPageError instanceof Error ? newPageError.message : String(newPageError)}. Escalating to full restart.`);
+            // Force level 3 if creating a new page fails
+            return await recoveryProcedure(ctx, new Error('Fallback recovery: new page failed'));
+          }
+        } else {
+          logWarn("Browser was null or disconnected, cannot create new page. Escalating to full restart.");
+          return await recoveryProcedure(ctx, new Error('Fallback recovery: browser disconnected'));
+        }
+        break;
+
+      case 3: // Full restart
+      default:
+        logInfo("Performing full browser restart (Recovery Level 3)");
+        if (ctx.page) {
+          try {
+            if (!ctx.page.isClosed()) await ctx.page.close();
+          } catch (closeError) {
+            logWarn(`Ignoring error closing page during full restart: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+          }
+        }
+        if (ctx.browser) {
+          try {
+            if (ctx.browser.isConnected()) await ctx.browser.close();
+          } catch (closeError) {
+            logWarn(`Ignoring error closing browser during full restart: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+          }
+        }
+        ctx.setPage(null);
+        ctx.setBrowser(null);
+        ctx.setIsInitializing(false); // Ensure flag is reset
+        logInfo("Waiting before re-initializing browser...");
+        await new Promise(resolve => setTimeout(resolve, CONFIG.RECOVERY_WAIT_TIME));
+        await initializeBrowser(ctx); // This will set page and browser again
         break;
     }
+
     logInfo("Recovery completed");
   } catch (recoveryError) {
-    logError(
-      `Recovery failed: ${recoveryError instanceof Error ? recoveryError.message : String(recoveryError)}`,
-    );
+    logError(`Recovery failed: ${recoveryError instanceof Error ? recoveryError.message : String(recoveryError)}`);
+
+    // Fall back to more aggressive recovery if initial attempt fails
     if (recoveryLevel < 3) {
       logInfo("Attempting higher level recovery");
       await recoveryProcedure(ctx, new Error("Fallback recovery"));
@@ -481,7 +534,7 @@ async function handleCaptchaDetection(ctx: PuppeteerContext): Promise<boolean> {
     if (captchaDetected) {
       logError("CAPTCHA detected! Initiating recovery...");
       await recoveryProcedure(ctx);
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced from 3000
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait after CAPTCHA recovery
       return true;
     }
   } catch (captchaCheckError) {
