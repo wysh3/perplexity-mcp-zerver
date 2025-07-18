@@ -14,4 +14,9 @@ export const CONFIG = {
     content: 120000, // Restored from backup.ts (2 minutes)
     recovery: 30000, // Restored from backup.ts
   },
+  DEBUG: {
+    CAPTURE_SCREENSHOTS: true, // Enable/disable debug screenshots
+    MAX_SCREENSHOTS: 5, // Maximum number of screenshots to keep
+    SCREENSHOT_ON_RECOVERY_SUCCESS: false, // Don't screenshot successful recoveries
+  },
 } as const;
