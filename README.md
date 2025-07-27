@@ -2,6 +2,10 @@
 
 A minimalist research server implementing the Model Context Protocol (MCP) to deliver AI-powered research capabilities through Perplexity's web interface.
 
+<a href="https://glama.ai/mcp/servers/@wysh3/perplexity-mcp-zerver">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@wysh3/perplexity-mcp-zerver/badge" alt="Perplexity Server MCP server" />
+</a>
+
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-333)]() 
 [![TypeScript Codebase](https://img.shields.io/badge/TypeScript-Codebase-333)]()
 [![Tests Passing](https://img.shields.io/badge/Tests-Passing-333)]()
