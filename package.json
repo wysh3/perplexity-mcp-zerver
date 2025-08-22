@@ -5,14 +5,14 @@
   "main": "build/main.js",
   "scripts": {
     "build": "tsc",
-    "start": "node build/main.js",
+    "start": "bun build/main.js",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "lint": "biome lint . --write",
     "format": "biome format . --write",
-    "update-docs-date": "node scripts/update-docs-date.js"
+    "dev": "bun run build && bun run start"
   },
   "keywords": ["mcp", "perplexity", "puppeteer", "ai", "research"],
   "author": "sm-moshi",

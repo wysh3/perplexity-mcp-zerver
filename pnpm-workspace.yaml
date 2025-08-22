@@ -1,5 +1,0 @@
-onlyBuiltDependencies:
-  - '@biomejs/biome'
-  - better-sqlite3
-  - esbuild
-  - puppeteer

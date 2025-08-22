@@ -2,9 +2,10 @@
 
 A minimalist research server implementing the Model Context Protocol (MCP) to deliver AI-powered research capabilities through Perplexity's web interface.
 
-[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-333)]() 
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-333)]()
 [![TypeScript Codebase](https://img.shields.io/badge/TypeScript-Codebase-333)]()
 [![Tests Passing](https://img.shields.io/badge/Tests-Passing-333)]()
+[![Bun Runtime](https://img.shields.io/badge/Runtime-Bun-333)]()
 
 ## Research Capabilities
 
@@ -47,15 +48,15 @@ Persistent conversations with context history
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- pnpm package manager
+- Bun runtime
+- Node.js 18+ (for TypeScript compilation)
 
 ### Installation
 ```bash
 git clone https://github.com/wysh3/perplexity-mcp-zerver.git
 cd perplexity-mcp-zerver
-pnpm install
-pnpm run build
+bun install
+bun run build
 ```
 
 ### Configuration
@@ -64,7 +65,7 @@ Add to your MCP configuration file:
 {
   "mcpServers": {
     "perplexity-server": {
-      "command": "node",
+      "command": "bun",
       "args": ["/absolute/path/to/build/main.js"],
       "timeout": 300
     }
