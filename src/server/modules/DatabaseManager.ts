@@ -5,13 +5,13 @@ import { fileURLToPath } from "node:url";
  * DatabaseManager - Handles all database operations
  * Focused, testable module for SQLite database management
  */
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import type { ChatMessage, IDatabaseManager } from "../../types/index.js";
 import { getChatHistory, initializeDatabase, saveChatMessage } from "../../utils/db.js";
 import { logError, logInfo, logWarn } from "../../utils/logging.js";
 
 export class DatabaseManager implements IDatabaseManager {
-  private db: Database.Database | null = null;
+  private db: Database | null = null;
   private initialized = false;
 
   constructor(private readonly customDbPath?: string) {}
@@ -34,7 +34,7 @@ export class DatabaseManager implements IDatabaseManager {
       }
 
       // Initialize SQLite database
-      this.db = new Database(dbPath, { fileMustExist: false });
+      this.db = new Database(dbPath, { create: true });
 
       // Run database initialization script
       initializeDatabase(this.db);
@@ -60,7 +60,7 @@ export class DatabaseManager implements IDatabaseManager {
     }
 
     try {
-      return getChatHistory(this.db as Database.Database, chatId);
+      return getChatHistory(this.db as Database, chatId);
     } catch (error) {
       logError("Failed to get chat history:", {
         error: error instanceof Error ? error.message : String(error),
@@ -77,7 +77,7 @@ export class DatabaseManager implements IDatabaseManager {
 
     try {
       const message: ChatMessage = { role, content };
-      saveChatMessage(this.db as Database.Database, chatId, message);
+      saveChatMessage(this.db as Database, chatId, message);
       logInfo(`Saved ${role} message for chat ${chatId}`);
     } catch (error) {
       logError("Failed to save chat message:", {
@@ -109,7 +109,7 @@ export class DatabaseManager implements IDatabaseManager {
   }
 
   // Getter for testing purposes
-  getDatabase(): Database.Database | null {
+  getDatabase(): Database | null {
     return this.db;
   }
 }

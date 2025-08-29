@@ -1,8 +1,6 @@
 /**
  * Database and Chat related type definitions
  */
-import type Database from "better-sqlite3";
-
 // ─── CHAT & DATABASE TYPES ────────────────────────────────────────────
 export interface ChatMessage {
   role: "user" | "assistant";

@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { CONFIG } from "../../server/config";
@@ -38,7 +38,7 @@ describe("Real Integration Tests for Code Coverage", () => {
       initializeDatabase(db);
 
       // Test that we can prepare statements (indicates tables exist)
-      const stmt = db.prepare("SELECT name FROM sqlite_master WHERE type='table'");
+      const stmt = db.query("SELECT name FROM sqlite_master WHERE type='table'");
       const tables = stmt.all();
 
       expect(Array.isArray(tables)).toBe(true);
