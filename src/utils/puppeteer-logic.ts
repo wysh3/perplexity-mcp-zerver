@@ -3,7 +3,7 @@
  * These functions can be tested without mocking Puppeteer
  */
 
-import type { BrowserConfig, ErrorAnalysis, RecoveryContext } from "../types/index.js";
+import type { ErrorAnalysis, RecoveryContext } from "../types/index.js";
 
 /**
  * Determine recovery level based on error and context
@@ -124,7 +124,7 @@ export function generateBrowserArgs(userAgent: string): string[] {
     "--disable-setuid-sandbox",
     "--disable-dev-shm-usage",
     "--disable-web-security",
-    
+
     // Enhanced anti-detection for Cloudflare
     "--disable-blink-features=AutomationControlled",
     "--disable-features=IsolateOrigins,site-per-process",
@@ -153,7 +153,7 @@ export function generateBrowserArgs(userAgent: string): string[] {
     "--disable-smooth-scrolling",
     "--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees",
     "--enable-features=NetworkService,NetworkServiceInProcess",
-    
+
     // Performance and resource optimizations
     "--disable-accelerated-2d-canvas",
     "--disable-gpu",
@@ -164,10 +164,10 @@ export function generateBrowserArgs(userAgent: string): string[] {
     "--no-default-browser-check",
     "--remote-debugging-port=0",
     "--use-mock-keychain",
-    
+
     // Window and viewport settings for realistic behavior
     "--window-size=1920,1080",
-    
+
     // User agent
     `--user-agent=${userAgent}`,
   ];
@@ -197,12 +197,12 @@ export function getCaptchaSelectors(): string[] {
     '[id*="captcha"]',
     'iframe[src*="captcha"]',
     'iframe[src*="recaptcha"]',
-    
+
     // Cloudflare Turnstile specific
     'iframe[src*="turnstile"]',
     '[class*="turnstile"]',
     '[id*="turnstile"]',
-    
+
     // Cloudflare challenge page selectors
     "#challenge-running",
     "#challenge-form",
@@ -210,25 +210,25 @@ export function getCaptchaSelectors(): string[] {
     ".challenge-form",
     '[class*="challenge"]',
     '[id*="challenge"]',
-    
+
     // Cloudflare specific elements
-    '.cf-browser-verification',
-    '.cf-checking-browser',
-    '.cf-under-attack',
-    '#cf-wrapper',
-    '.cf-im-under-attack',
-    
+    ".cf-browser-verification",
+    ".cf-checking-browser",
+    ".cf-under-attack",
+    "#cf-wrapper",
+    ".cf-im-under-attack",
+
     // Additional Cloudflare patterns
-    '[data-ray]', // Cloudflare Ray ID indicator
-    '.ray-id',
-    '#cf-error-details',
-    '.cf-error-overview',
-    
+    "[data-ray]", // Cloudflare Ray ID indicator
+    ".ray-id",
+    "#cf-error-details",
+    ".cf-error-overview",
+
     // Bot detection indicators
     '[class*="bot-detection"]',
     '[class*="security-check"]',
     '[class*="verification"]',
-    
+
     // Generic challenge indicators
     'body[class*="challenge"]',
     'html[class*="challenge"]',

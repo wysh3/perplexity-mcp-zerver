@@ -13,7 +13,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { TOOL_SCHEMAS } from "../schema/toolSchemas.js";
-import type { ChatPerplexityArgs, ToolHandler, ToolHandlersRegistry } from "../types/index.js";
+import type { ChatPerplexityArgs, ToolHandlersRegistry } from "../types/index.js";
 import { logError, logWarn } from "../utils/logging.js";
 
 /**

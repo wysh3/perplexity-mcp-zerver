@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { Database } from "bun:sqlite";
 import type { ChatMessage, IDatabaseManager } from "../../types/index.js";
 import { getChatHistory, initializeDatabase, saveChatMessage } from "../../utils/db.js";
-import { logError, logInfo, logWarn } from "../../utils/logging.js";
+import { logError, logInfo } from "../../utils/logging.js";
 
 export class DatabaseManager implements IDatabaseManager {
   private db: Database | null = null;

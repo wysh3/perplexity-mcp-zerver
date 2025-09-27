@@ -10,7 +10,7 @@ import type {
   ISearchEngine,
   ServerDependencies,
 } from "../types/index.js";
-import { logError, logInfo, logWarn } from "../utils/logging.js";
+import { logError, logInfo } from "../utils/logging.js";
 import { BrowserManager } from "./modules/BrowserManager.js";
 import { DatabaseManager } from "./modules/DatabaseManager.js";
 import { SearchEngine } from "./modules/SearchEngine.js";

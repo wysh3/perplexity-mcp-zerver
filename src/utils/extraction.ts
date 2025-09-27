@@ -302,20 +302,20 @@ export async function fetchSinglePageContent(
 
     // Get page HTML and create DOM
     const html = await page.content();
-    
+
     // Suppress JSDOM console output to prevent CSS/HTML dumps in logs
     const originalConsoleError = console.error;
     const originalConsoleWarn = console.warn;
     console.error = () => {}; // Suppress JSDOM errors
-    console.warn = () => {};  // Suppress JSDOM warnings
-    
-    const dom = new JSDOM(html, { 
+    console.warn = () => {}; // Suppress JSDOM warnings
+
+    const dom = new JSDOM(html, {
       url: extractionUrl,
       // Additional options to reduce JSDOM verbosity
       resources: "usable",
-      runScripts: "outside-only"
+      runScripts: "outside-only",
     });
-    
+
     // Restore console methods
     console.error = originalConsoleError;
     console.warn = originalConsoleWarn;
@@ -367,7 +367,7 @@ export async function extractSameDomainLinks(
 ): Promise<{ url: string; text: string }[]> {
   try {
     const baseHostname = new URL(baseUrl).hostname;
-    const links = await page.evaluate((base) => {
+    const links = await page.evaluate(() => {
       return Array.from(document.querySelectorAll("a[href]"))
         .map((link) => {
           const href = link.getAttribute("href");

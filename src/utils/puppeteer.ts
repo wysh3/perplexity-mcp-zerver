@@ -1,5 +1,3 @@
-import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
 /**
  * Puppeteer utility functions for browser automation, navigation, and recovery
  */
@@ -137,14 +135,14 @@ async function validateFinalPageState(page: Page): Promise<void> {
 
 async function handleNavigationFailure(page: Page, error: unknown): Promise<never> {
   logError(`Navigation failed: ${error}`);
-  
+
   // Only capture screenshot for actual failures, not recoverable issues
   const shouldCaptureScreenshot = CONFIG.DEBUG.CAPTURE_SCREENSHOTS && !isRecoverableError(error);
-  
+
   if (shouldCaptureScreenshot) {
     try {
       if (page && !page.isClosed()) {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
         // Explicitly type the path with the correct extension to satisfy TypeScript
         const screenshotPath = `debug_navigation_failed_${timestamp}.png` as const;
         await page.screenshot({ path: screenshotPath, fullPage: true });
@@ -154,21 +152,25 @@ async function handleNavigationFailure(page: Page, error: unknown): Promise<neve
       logError(`Failed to capture screenshot: ${screenshotError}`);
     }
   }
-  
+
   throw error;
 }
 
 function isRecoverableError(error: unknown): boolean {
   if (!error) return false;
-  
-  const errorMsg = typeof error === 'string' ? error : 
-    (error instanceof Error ? error.message : String(error)).toLowerCase();
-  
+
+  const errorMsg =
+    typeof error === "string"
+      ? error
+      : (error instanceof Error ? error.message : String(error)).toLowerCase();
+
   // These are errors that our recovery system can handle
-  return errorMsg.includes('search input not found') ||
-         errorMsg.includes('captcha') ||
-         errorMsg.includes('timeout') ||
-         errorMsg.includes('navigation');
+  return (
+    errorMsg.includes("search input not found") ||
+    errorMsg.includes("captcha") ||
+    errorMsg.includes("timeout") ||
+    errorMsg.includes("navigation")
+  );
 }
 
 export async function navigateToPerplexity(ctx: PuppeteerContext) {
@@ -279,7 +281,7 @@ export async function waitForSearchInput(
 ): Promise<string | null> {
   const { page, setSearchInputSelector } = ctx;
   if (!page) return null;
-  
+
   // Optimized: Try the most common selector first with shorter timeout
   const primarySelector = '[role="textbox"]';
   try {
@@ -301,7 +303,7 @@ export async function waitForSearchInput(
     // Fall back to other selectors only if primary fails
   }
 
-  const fallbackSelectors = getSearchInputSelectors().filter(s => s !== primarySelector);
+  const fallbackSelectors = getSearchInputSelectors().filter((s) => s !== primarySelector);
   for (const selector of fallbackSelectors) {
     try {
       const element = await page.waitForSelector(selector, {
@@ -322,7 +324,7 @@ export async function waitForSearchInput(
       // Continue to next selector without logging
     }
   }
-  
+
   logError("No working search input found");
   return null;
 }
@@ -437,15 +439,15 @@ export async function recoveryProcedure(ctx: PuppeteerContext, error?: Error): P
     operationCount: ctx.operationCount,
   };
 
-  let recoveryLevel = determineRecoveryLevel(error, recoveryContext);
+  const recoveryLevel = determineRecoveryLevel(error, recoveryContext);
   const opId = ctx.incrementOperationCount();
 
   logInfo("Starting recovery procedure");
-  
+
   // Clean up old debug screenshots periodically
   if (opId % 5 === 0) {
-    cleanupOldDebugScreenshots().catch(err => 
-      logWarn(`Failed to cleanup old screenshots: ${err}`)
+    cleanupOldDebugScreenshots().catch((err) =>
+      logWarn(`Failed to cleanup old screenshots: ${err}`),
     );
   }
 
@@ -457,7 +459,9 @@ export async function recoveryProcedure(ctx: PuppeteerContext, error?: Error): P
           try {
             await ctx.page.reload({ timeout: CONFIG.TIMEOUT_PROFILES.navigation });
           } catch (reloadError) {
-            logWarn(`Page reload failed: ${reloadError instanceof Error ? reloadError.message : String(reloadError)}. Proceeding with recovery.`);
+            logWarn(
+              `Page reload failed: ${reloadError instanceof Error ? reloadError.message : String(reloadError)}. Proceeding with recovery.`,
+            );
           }
         } else {
           logWarn("Page was null or closed, cannot refresh. Proceeding with recovery.");
@@ -470,7 +474,9 @@ export async function recoveryProcedure(ctx: PuppeteerContext, error?: Error): P
           try {
             if (!ctx.page?.isClosed()) await ctx.page.close();
           } catch (closeError) {
-            logWarn(`Ignoring error closing old page: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+            logWarn(
+              `Ignoring error closing old page: ${closeError instanceof Error ? closeError.message : String(closeError)}`,
+            );
           }
           ctx.setPage(null);
         }
@@ -482,13 +488,17 @@ export async function recoveryProcedure(ctx: PuppeteerContext, error?: Error): P
             await page.setViewport({ width: 1920, height: 1080 });
             await page.setUserAgent(CONFIG.USER_AGENT);
           } catch (newPageError) {
-            logError(`Failed to create new page: ${newPageError instanceof Error ? newPageError.message : String(newPageError)}. Escalating to full restart.`);
+            logError(
+              `Failed to create new page: ${newPageError instanceof Error ? newPageError.message : String(newPageError)}. Escalating to full restart.`,
+            );
             // Force level 3 if creating a new page fails
-            return await recoveryProcedure(ctx, new Error('Fallback recovery: new page failed'));
+            return await recoveryProcedure(ctx, new Error("Fallback recovery: new page failed"));
           }
         } else {
-          logWarn("Browser was null or disconnected, cannot create new page. Escalating to full restart.");
-          return await recoveryProcedure(ctx, new Error('Fallback recovery: browser disconnected'));
+          logWarn(
+            "Browser was null or disconnected, cannot create new page. Escalating to full restart.",
+          );
+          return await recoveryProcedure(ctx, new Error("Fallback recovery: browser disconnected"));
         }
         break;
 
@@ -499,28 +509,34 @@ export async function recoveryProcedure(ctx: PuppeteerContext, error?: Error): P
           try {
             if (!ctx.page.isClosed()) await ctx.page.close();
           } catch (closeError) {
-            logWarn(`Ignoring error closing page during full restart: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+            logWarn(
+              `Ignoring error closing page during full restart: ${closeError instanceof Error ? closeError.message : String(closeError)}`,
+            );
           }
         }
         if (ctx.browser) {
           try {
             if (ctx.browser.isConnected()) await ctx.browser.close();
           } catch (closeError) {
-            logWarn(`Ignoring error closing browser during full restart: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+            logWarn(
+              `Ignoring error closing browser during full restart: ${closeError instanceof Error ? closeError.message : String(closeError)}`,
+            );
           }
         }
         ctx.setPage(null);
         ctx.setBrowser(null);
         ctx.setIsInitializing(false); // Ensure flag is reset
         logInfo("Waiting before re-initializing browser...");
-        await new Promise(resolve => setTimeout(resolve, CONFIG.RECOVERY_WAIT_TIME));
+        await new Promise((resolve) => setTimeout(resolve, CONFIG.RECOVERY_WAIT_TIME));
         await initializeBrowser(ctx); // This will set page and browser again
         break;
     }
 
     logInfo("Recovery completed");
   } catch (recoveryError) {
-    logError(`Recovery failed: ${recoveryError instanceof Error ? recoveryError.message : String(recoveryError)}`);
+    logError(
+      `Recovery failed: ${recoveryError instanceof Error ? recoveryError.message : String(recoveryError)}`,
+    );
 
     // Fall back to more aggressive recovery if initial attempt fails
     if (recoveryLevel < 3) {
@@ -735,13 +751,13 @@ export async function retryOperation<T>(
     try {
       logInfo(`Attempt ${i + 1}/${maxRetries}...`);
       const result = await operation();
-      
+
       // If we had recovery attempts and now succeeded, track the success
       if (hadRecovery && i > 0) {
         logInfo("Operation succeeded after recovery - cleaning up debug artifacts");
         trackRecoverySuccess(ctx);
       }
-      
+
       return result;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
@@ -777,23 +793,23 @@ export async function retryOperation<T>(
  */
 async function cleanupOldDebugScreenshots(): Promise<void> {
   try {
-    const files = await fs.readdir('.');
-    const debugFiles = files.filter(file => file.startsWith('debug_navigation_failed_'));
-    
+    const files = await fs.readdir(".");
+    const debugFiles = files.filter((file) => file.startsWith("debug_navigation_failed_"));
+
     const maxScreenshots = CONFIG.DEBUG.MAX_SCREENSHOTS;
     if (debugFiles.length <= maxScreenshots) return;
-    
+
     // Sort by creation time (newest first) and remove older ones
     const fileStats = await Promise.all(
-      debugFiles.map(async file => ({
+      debugFiles.map(async (file) => ({
         name: file,
-        mtime: (await fs.stat(file)).mtime
-      }))
+        mtime: (await fs.stat(file)).mtime,
+      })),
     );
-    
+
     fileStats.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
     const filesToDelete = fileStats.slice(maxScreenshots);
-    
+
     for (const file of filesToDelete) {
       try {
         await fs.unlink(file.name);
@@ -811,10 +827,10 @@ async function cleanupOldDebugScreenshots(): Promise<void> {
  * Track recovery success and clean up screenshots when recovery works
  */
 function trackRecoverySuccess(ctx: PuppeteerContext): void {
-  // If we successfully complete an operation after recovery, 
+  // If we successfully complete an operation after recovery,
   // we can clean up any recent debug screenshots since the issue was resolved
-  cleanupOldDebugScreenshots().catch(err => 
-    logWarn(`Failed to cleanup screenshots after successful recovery: ${err}`)
+  cleanupOldDebugScreenshots().catch((err) =>
+    logWarn(`Failed to cleanup screenshots after successful recovery: ${err}`),
   );
 }
 

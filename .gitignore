@@ -43,3 +43,7 @@ coverage/server/
 coverage/schema/
 !coverage/lcov.info
 coverage/coverage-final.json
+
+#bun
+bun.lockb
+bun.lock
