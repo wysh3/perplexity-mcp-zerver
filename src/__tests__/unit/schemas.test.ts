@@ -25,9 +25,8 @@ describe("Tool Schemas", () => {
         expect(schema.category).toBeDefined();
         expect(typeof schema.category).toBe("string");
 
-        // Input/output schemas
+        // Input schema
         expect(schema.inputSchema).toBeDefined();
-        expect(schema.outputSchema).toBeDefined();
 
         // Keywords and use cases
         expect(Array.isArray(schema.keywords)).toBe(true);
@@ -105,15 +104,11 @@ describe("Tool Schemas", () => {
       });
     });
 
-    it("should have proper JSON Schema compliance", () => {
+    it("should have proper schema structure", () => {
       TOOL_SCHEMAS.forEach((schema) => {
-        // Check input schema
+        // Check input schema only
         expect(schema.inputSchema.type).toBe("object");
         expect(schema.inputSchema.properties).toBeDefined();
-
-        // Check output schema
-        expect(schema.outputSchema.type).toBe("object");
-        expect(schema.outputSchema.properties).toBeDefined();
       });
     });
   });

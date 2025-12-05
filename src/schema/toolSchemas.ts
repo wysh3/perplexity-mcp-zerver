@@ -35,21 +35,6 @@ export const TOOL_SCHEMAS = [
       },
       required: ["message"],
     },
-    outputSchema: {
-      type: "object",
-      description:
-        "Describes the structure of the JSON object returned within the response text field.",
-      properties: {
-        chat_id: {
-          type: "string",
-          description: "ID of the chat session (new or existing)",
-        },
-        response: {
-          type: "string",
-          description: "Perplexity AI response to the message",
-        },
-      },
-    },
     examples: [
       {
         description: "Simple question",
@@ -121,57 +106,6 @@ export const TOOL_SCHEMAS = [
       },
       required: ["url"],
     },
-    outputSchema: {
-      type: "object",
-      description:
-        "Returns a JSON object with extraction status and content for the URL(s) explored.",
-      properties: {
-        status: {
-          type: "string",
-          enum: ["Success", "SuccessWithFallback", "SuccessWithPartial", "Error"],
-          description: "Indicates the outcome of the extraction attempt.",
-        },
-        message: {
-          type: "string",
-          description: 'Error message or context for "SuccessWithPartial" status.',
-        },
-        rootUrl: {
-          type: "string",
-          description: "The initial URL provided for exploration.",
-        },
-        explorationDepth: {
-          type: "number",
-          description: "The maximum depth requested for exploration.",
-        },
-        pagesExplored: {
-          type: "number",
-          description: "The number of pages successfully fetched during exploration.",
-        },
-        content: {
-          type: "array",
-          description: "Array containing results for each explored page.",
-          items: {
-            type: "object",
-            properties: {
-              url: { type: "string", description: "URL of the explored page." },
-              title: {
-                type: "string",
-                description: "Title of the explored page (if available).",
-              },
-              textContent: {
-                type: "string",
-                description: "Extracted text content of the page (if successful).",
-              },
-              error: {
-                type: "string",
-                description: "Error message if fetching this specific page failed.",
-              },
-            },
-            required: ["url"],
-          },
-        },
-      },
-    },
     examples: [
       {
         description: "Successful extraction from an article",
@@ -216,16 +150,6 @@ export const TOOL_SCHEMAS = [
       },
       required: ["query"],
     },
-    outputSchema: {
-      type: "object",
-      properties: {
-        response: {
-          type: "string",
-          description:
-            'The raw text response from Perplexity containing documentation, examples, and potentially source URLs prefixed with "Official URL(s):". The calling agent should parse this text to extract URLs if needed for further processing.',
-        },
-      },
-    },
     examples: [
       {
         description: "Basic documentation request",
@@ -263,16 +187,6 @@ export const TOOL_SCHEMAS = [
         },
       },
       required: ["requirement"],
-    },
-    outputSchema: {
-      type: "object",
-      properties: {
-        response: {
-          type: "string",
-          description:
-            "The raw text response from Perplexity containing API suggestions and evaluations.",
-        },
-      },
     },
     examples: [
       {
@@ -314,16 +228,6 @@ export const TOOL_SCHEMAS = [
         },
       },
       required: ["code"],
-    },
-    outputSchema: {
-      type: "object",
-      properties: {
-        response: {
-          type: "string",
-          description:
-            "The raw text response from Perplexity analyzing the code for deprecated features.",
-        },
-      },
     },
     examples: [
       {
@@ -374,15 +278,6 @@ export const TOOL_SCHEMAS = [
         },
       },
       required: ["query"],
-    },
-    outputSchema: {
-      type: "object",
-      properties: {
-        response: {
-          type: "string",
-          description: "The search result text provided by Perplexity AI.",
-        },
-      },
     },
     examples: [
       {
