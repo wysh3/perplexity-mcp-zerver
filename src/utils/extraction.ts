@@ -303,22 +303,22 @@ export async function fetchSinglePageContent(
     // Get page HTML and create DOM
     const html = await page.content();
 
-    // Suppress JSDOM console output to prevent CSS/HTML dumps in logs
-    const originalConsoleError = console.error;
-    const originalConsoleWarn = console.warn;
-    console.error = () => {}; // Suppress JSDOM errors
-    console.warn = () => {}; // Suppress JSDOM warnings
+    // Use JSDOM's virtualConsole to suppress CSS/HTML parsing output (cleaner than console override)
+    const virtualConsole = new (await import("jsdom")).VirtualConsole();
+    // Only forward errors that aren't CSS-related
+    virtualConsole.on("error", (err: string) => {
+      if (!err.includes("Could not parse CSS") && !err.includes("Error parsing")) {
+        ctx.log("warn", `JSDOM error: ${err}`);
+      }
+    });
 
     const dom = new JSDOM(html, {
       url: extractionUrl,
-      // Additional options to reduce JSDOM verbosity
-      resources: "usable",
+      virtualConsole,
+      // Disable resource loading to prevent unnecessary network requests
+      resources: undefined,
       runScripts: "outside-only",
     });
-
-    // Restore console methods
-    console.error = originalConsoleError;
-    console.warn = originalConsoleWarn;
 
     // Try GitHub-specific extraction first
     const gitHubResult = await extractGitHubContent(

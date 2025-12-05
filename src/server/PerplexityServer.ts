@@ -51,9 +51,9 @@ export class PerplexityServer {
       // Setup tool handlers
       this.setupToolHandlers();
 
-      // Setup graceful shutdown (only if not in MCP mode)
+      // Setup graceful shutdown (only if not in MCP mode and not in test mode)
       // biome-ignore lint/complexity/useLiteralKeys: Environment variable access
-      if (!process.env["MCP_MODE"]) {
+      if (!process.env["MCP_MODE"] && !process.env["VITEST"]) {
         this.setupShutdownHandler();
       }
 

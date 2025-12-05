@@ -155,9 +155,9 @@ describe("MCP Server Integration", () => {
       ];
 
       // Test that all tools are present in our list
-      requiredTools.forEach((tool) => {
+      for (const tool of requiredTools) {
         expect(requiredTools).toContain(tool);
-      });
+      }
     });
 
     it("should handle dynamic tool handler registration", () => {

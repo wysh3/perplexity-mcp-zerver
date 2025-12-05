@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PageContentResult } from "../../types/browser.js";
+import type { Page } from "puppeteer";
+import type { PageContentResult, PuppeteerContext } from "../../types/browser.js";
+
+// Mock types for testing - these are partial implementations that satisfy the test requirements
+type MockPage = Pick<Page, never> & { evaluate: ReturnType<typeof vi.fn> };
+type MockPuppeteerContext = Pick<PuppeteerContext, never> & { log: ReturnType<typeof vi.fn> };
 
 // Mock external dependencies
 vi.mock("@mozilla/readability", () => ({
@@ -74,7 +79,7 @@ describe("Extraction Utilities", () => {
     it("should extract same-domain links from a page", async () => {
       const { extractSameDomainLinks } = await import("../../utils/extraction.js");
 
-      const mockPage: any = {
+      const mockPage: MockPage = {
         evaluate: vi.fn().mockResolvedValue([
           { url: "/page1", text: "Page 1" },
           { url: "/page2", text: "Page 2" },
@@ -82,7 +87,7 @@ describe("Extraction Utilities", () => {
         ]),
       };
 
-      const result = await extractSameDomainLinks(mockPage, "https://example.com");
+      const result = await extractSameDomainLinks(mockPage as unknown as Page, "https://example.com");
 
       expect(result).toHaveLength(3);
       expect(result[0]?.url).toContain("https://example.com");
@@ -91,7 +96,7 @@ describe("Extraction Utilities", () => {
     it("should filter out invalid and cross-domain links", async () => {
       const { extractSameDomainLinks } = await import("../../utils/extraction.js");
 
-      const mockPage: any = {
+      const mockPage: MockPage = {
         evaluate: vi.fn().mockResolvedValue([
           { url: "javascript:void(0)", text: "Invalid Link" },
           { url: "mailto:test@example.com", text: "Email Link" },
@@ -100,7 +105,7 @@ describe("Extraction Utilities", () => {
         ]),
       };
 
-      const result = await extractSameDomainLinks(mockPage, "https://example.com");
+      const result = await extractSameDomainLinks(mockPage as unknown as Page, "https://example.com");
 
       // Should only have the valid same-domain link
       expect(result).toHaveLength(1);
@@ -110,11 +115,11 @@ describe("Extraction Utilities", () => {
     it("should handle link extraction errors gracefully", async () => {
       const { extractSameDomainLinks } = await import("../../utils/extraction.js");
 
-      const mockPage: any = {
+      const mockPage: MockPage = {
         evaluate: vi.fn().mockRejectedValue(new Error("Evaluation failed")),
       };
 
-      const result = await extractSameDomainLinks(mockPage, "https://example.com");
+      const result = await extractSameDomainLinks(mockPage as unknown as Page, "https://example.com");
 
       expect(result).toEqual([]);
     });
@@ -132,7 +137,7 @@ describe("Extraction Utilities", () => {
     it("should respect timeout signal during recursive fetch", async () => {
       const { recursiveFetch } = await import("../../utils/extraction.js");
 
-      const mockCtx: any = { log: vi.fn() };
+      const mockCtx: MockPuppeteerContext = { log: vi.fn() };
       const visitedUrls = new Set<string>();
       const results: PageContentResult[] = [];
       const globalTimeoutSignal = { timedOut: true }; // Already timed out
@@ -144,7 +149,7 @@ describe("Extraction Utilities", () => {
         visitedUrls,
         results,
         globalTimeoutSignal,
-        mockCtx,
+        mockCtx as unknown as PuppeteerContext,
       );
 
       expect(results).toHaveLength(0);
@@ -153,7 +158,7 @@ describe("Extraction Utilities", () => {
     it("should handle basic recursive fetch flow", async () => {
       const { recursiveFetch } = await import("../../utils/extraction.js");
 
-      const mockCtx: any = { log: vi.fn() };
+      const mockCtx: MockPuppeteerContext = { log: vi.fn() };
       const visitedUrls = new Set<string>();
       const results: PageContentResult[] = [];
       const globalTimeoutSignal = { timedOut: false };
@@ -165,7 +170,7 @@ describe("Extraction Utilities", () => {
         visitedUrls,
         results,
         globalTimeoutSignal,
-        mockCtx,
+        mockCtx as unknown as PuppeteerContext,
       );
 
       // Should have attempted to process the URL
@@ -175,7 +180,7 @@ describe("Extraction Utilities", () => {
     it("should fetch simpler content for deeper levels", async () => {
       const { recursiveFetch } = await import("../../utils/extraction.js");
 
-      const mockCtx: any = { log: vi.fn() };
+      const mockCtx: MockPuppeteerContext = { log: vi.fn() };
       const visitedUrls = new Set<string>();
       const results: PageContentResult[] = [];
       const globalTimeoutSignal = { timedOut: false };
@@ -196,7 +201,7 @@ describe("Extraction Utilities", () => {
         visitedUrls,
         results,
         globalTimeoutSignal,
-        mockCtx,
+        mockCtx as unknown as PuppeteerContext,
       );
 
       // Should have attempted to process the URL

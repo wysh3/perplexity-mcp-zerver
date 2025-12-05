@@ -165,8 +165,8 @@ export function generateBrowserArgs(userAgent: string): string[] {
     "--remote-debugging-port=0",
     "--use-mock-keychain",
 
-    // Window and viewport settings for realistic behavior
-    "--window-size=1920,1080",
+    // Window and viewport settings - optimized for low-end systems while maintaining realistic behavior
+    "--window-size=1280,720",
 
     // User agent
     `--user-agent=${userAgent}`,

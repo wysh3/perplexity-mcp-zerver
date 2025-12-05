@@ -34,8 +34,8 @@ export async function initializeBrowser(ctx: PuppeteerContext) {
     ctx.setPage(page);
     await setupBrowserEvasion(ctx);
     await page.setViewport({
-      width: 1920,
-      height: 1080,
+      width: 1280,
+      height: 720,
       deviceScaleFactor: 1,
       isMobile: false,
       hasTouch: false,
@@ -43,10 +43,10 @@ export async function initializeBrowser(ctx: PuppeteerContext) {
     await page.setUserAgent(CONFIG.USER_AGENT);
     page.setDefaultNavigationTimeout(CONFIG.PAGE_TIMEOUT);
 
-    logInfo("Browser initialized successfully, skipping navigation in initialization");
-    // Don't navigate to Perplexity during initialization - let individual tools handle navigation
-    // await navigateToPerplexity(ctx);
-    // TODO: Why is the navigateToPerplexity commented out?
+    logInfo("Browser initialized successfully");
+    // NOTE: Navigation to Perplexity is intentionally deferred (lazy initialization).
+    // Each tool handles navigation when invoked, reducing startup time and avoiding
+    // unnecessary browser operations if no tools are called.
   } catch (error) {
     logError(`Browser initialization failed: ${error}`);
     if (ctx.browser) {
@@ -220,11 +220,11 @@ export async function setupBrowserEvasion(ctx: PuppeteerContext) {
             READY_TO_RUN: "ready_to_run",
             RUNNING: "running",
           },
-          getDetails: () => {},
-          getIsInstalled: () => {},
-          installState: () => {},
+          getDetails: () => { },
+          getIsInstalled: () => { },
+          installState: () => { },
           isInstalled: false,
-          runningState: () => {},
+          runningState: () => { },
         },
         runtime: {
           OnInstalledReason: {
@@ -262,12 +262,12 @@ export async function setupBrowserEvasion(ctx: PuppeteerContext) {
             UPDATE_AVAILABLE: "update_available",
           },
           connect: () => ({
-            postMessage: () => {},
+            postMessage: () => { },
             onMessage: {
-              addListener: () => {},
-              removeListener: () => {},
+              addListener: () => { },
+              removeListener: () => { },
             },
-            disconnect: () => {},
+            disconnect: () => { },
           }),
         },
       };
