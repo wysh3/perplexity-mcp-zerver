@@ -25,9 +25,21 @@ export async function initializeBrowser(ctx: PuppeteerContext) {
     if (ctx.browser) {
       await ctx.browser.close();
     }
+    const headless = true;
+    let browserArgs = generateBrowserArgs(CONFIG.USER_AGENT);
+
+    // Remove GPU-disabling flags when in non-headless mode (needed for rendering)
+    if (!headless) {
+      browserArgs = browserArgs.filter(arg =>
+        !arg.includes('--disable-gpu') &&
+        !arg.includes('--disable-accelerated-2d-canvas')
+      );
+    }
+
     const browser = await puppeteer.launch({
-      headless: true,
-      args: generateBrowserArgs(CONFIG.USER_AGENT),
+      headless,
+      args: browserArgs,
+      userDataDir: CONFIG.USE_PERSISTENT_PROFILE ? CONFIG.BROWSER_DATA_DIR : undefined,
     });
     ctx.setBrowser(browser);
     const page = await browser.newPage();
@@ -43,7 +55,11 @@ export async function initializeBrowser(ctx: PuppeteerContext) {
     await page.setUserAgent(CONFIG.USER_AGENT);
     page.setDefaultNavigationTimeout(CONFIG.PAGE_TIMEOUT);
 
-    logInfo("Browser initialized successfully");
+    if (CONFIG.USE_PERSISTENT_PROFILE) {
+      logInfo(`Browser initialized with persistent profile at: ${CONFIG.BROWSER_DATA_DIR}`);
+    } else {
+      logInfo("Browser initialized (anonymous mode)");
+    }
     // NOTE: Navigation to Perplexity is intentionally deferred (lazy initialization).
     // Each tool handles navigation when invoked, reducing startup time and avoiding
     // unnecessary browser operations if no tools are called.

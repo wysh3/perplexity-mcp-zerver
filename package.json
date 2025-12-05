@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "bun build/main.js",
+    "login": "bun build/login.js",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -14,7 +15,13 @@
     "format": "biome format . --write",
     "dev": "bun run build && bun run start"
   },
-  "keywords": ["mcp", "perplexity", "puppeteer", "ai", "research"],
+  "keywords": [
+    "mcp",
+    "perplexity",
+    "puppeteer",
+    "ai",
+    "research"
+  ],
   "author": "sm-moshi",
   "license": "GPL-3.0-or-later",
   "type": "module",

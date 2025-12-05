@@ -81,6 +81,29 @@ Initiate commands through your MCP client:
 
 ---
 
+## 🔐 Pro Account Support (Optional)
+
+Use your Perplexity Pro subscription for access to better models (GPT-5.1, Claude Sonnet 4.5) and higher limits.
+
+### One-Time Setup
+```bash
+bun run build
+bun run login
+```
+
+A browser window will open. **Log in using email** (recommended for best compatibility), then close the browser. Your session is now saved!
+
+> **Note**: Google/SSO login may work but email login is more reliable with the browser automation.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PERPLEXITY_BROWSER_DATA_DIR` | `~/.perplexity-mcp` | Browser profile directory |
+| `PERPLEXITY_PERSISTENT_PROFILE` | `true` | Set to `false` for anonymous mode |
+
+---
+
 ## Technical Comparison
 
 | Feature              | This Implementation | Traditional APIs |
