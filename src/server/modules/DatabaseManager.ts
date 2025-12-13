@@ -14,9 +14,14 @@ export class DatabaseManager implements IDatabaseManager {
   private db: Database | null = null;
   private initialized = false;
 
-  constructor(private readonly customDbPath?: string) {}
+  constructor(private readonly customDbPath?: string) { }
 
   initialize(): void {
+    if (this.initialized && this.db) {
+      logInfo("DatabaseManager already initialized");
+      return;
+    }
+
     try {
       // Determine database path
       const dbPath =

@@ -4,6 +4,7 @@
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type {
   IBrowserManager,
   IDatabaseManager,
@@ -206,6 +207,20 @@ export class PerplexityServer {
         stack: error instanceof Error ? error.stack : undefined,
       });
       process.exit(1);
+    }
+  }
+
+  async connect(transport: Transport): Promise<void> {
+    try {
+      logInfo("Connecting to provided transport...");
+      await this.server.connect(transport);
+      logInfo("PerplexityServer connected to transport");
+    } catch (error) {
+      logError("Failed to connect to transport:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
     }
   }
 
