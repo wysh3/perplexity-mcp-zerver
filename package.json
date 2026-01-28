@@ -29,10 +29,10 @@
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@mozilla/readability": "0.6.0",
     "@types/axios": "0.9.36",
-    "@types/jsdom": "21.1.7",
+    "@types/jsdom": "27.0.0",
     "@types/mozilla__readability": "0.4.2",
     "axios": "^1.13.4",
-    "jsdom": "26.1.0",
+    "jsdom": "27.4.0",
     "minimist": "1.2.8",
     "puppeteer": "24.10.1",
     "zod": "3.25.67"
