@@ -15,7 +15,10 @@
     "noPropertyAccessFromIndexSignature": true,
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
-    "types": ["vitest/globals", "node", "bun-types"]
+    "types": ["vitest/globals", "node", "bun-types"],
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true
   },
   "include": ["src/**/*"],
   "exclude": ["docs/", "build/", "node_modules/"]

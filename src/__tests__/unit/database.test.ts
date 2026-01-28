@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ChatMessage } from "../../types/index.js";
 import { DatabaseManager } from "../../server/modules/DatabaseManager.js";
+import type { ChatMessage } from "../../types/index.js";
 
 // Mock Node.js fs module
 vi.mock("node:fs", () => ({
@@ -26,21 +26,25 @@ vi.mock("node:url", () => ({
 }));
 
 // Mock bun:sqlite
-vi.mock("bun:sqlite", () => {
-  const mockStmt = {
+const { mockStmt } = vi.hoisted(() => ({
+  mockStmt: {
     all: vi.fn(),
     run: vi.fn(),
-  };
+  },
+}));
 
-  return {
-    Database: vi.fn().mockImplementation(() => ({
-      close: vi.fn(),
-      exec: vi.fn(),
-      prepare: vi.fn().mockReturnValue(mockStmt),
-      query: vi.fn().mockReturnValue(mockStmt),
-    })),
-  };
-});
+const { MockDatabase } = vi.hoisted(() => ({
+  MockDatabase: class {
+    close = vi.fn();
+    exec = vi.fn();
+    prepare = mockStmt as { all: ReturnType<typeof vi.fn>; run: ReturnType<typeof vi.fn> };
+    query = mockStmt as { all: ReturnType<typeof vi.fn>; run: ReturnType<typeof vi.fn> };
+  },
+}));
+
+vi.mock("bun:sqlite", () => ({
+  Database: MockDatabase,
+}));
 
 // Mock database utilities
 vi.mock("../../utils/db.js", () => ({
@@ -103,7 +107,9 @@ describe("DatabaseManager", () => {
 
       expect(mockJoin).toHaveBeenCalled();
       expect(mockInitializeDatabase).toHaveBeenCalled();
-      expect(mockLogInfo).toHaveBeenCalledWith("DatabaseManager initialized successfully");
+      expect(mockLogInfo).toHaveBeenCalledWith(
+        "DatabaseManager initialized successfully with optimizations",
+      );
       expect(databaseManager.isInitialized()).toBe(true);
     });
 

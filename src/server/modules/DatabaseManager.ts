@@ -1,11 +1,11 @@
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 /**
  * DatabaseManager - Handles all database operations
  * Focused, testable module for SQLite database management
  */
 import { Database } from "bun:sqlite";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ChatMessage, IDatabaseManager } from "../../types/index.js";
 import { getChatHistory, initializeDatabase, saveChatMessage } from "../../utils/db.js";
 import { logError, logInfo } from "../../utils/logging.js";
@@ -36,11 +36,18 @@ export class DatabaseManager implements IDatabaseManager {
       // Initialize SQLite database
       this.db = new Database(dbPath, { create: true });
 
+      // Optimize database performance with PRAGMA settings
+      this.db.exec("PRAGMA synchronous = NORMAL;");
+      this.db.exec("PRAGMA journal_mode = WAL;");
+      this.db.exec("PRAGMA cache_size = -64000;");
+      this.db.exec("PRAGMA temp_store = MEMORY;");
+      this.db.exec("PRAGMA foreign_keys = ON;");
+
       // Run database initialization script
       initializeDatabase(this.db);
 
       this.initialized = true;
-      logInfo("DatabaseManager initialized successfully");
+      logInfo("DatabaseManager initialized successfully with optimizations");
     } catch (error) {
       logError("DatabaseManager initialization failed:", {
         error: error instanceof Error ? error.message : String(error),

@@ -12,6 +12,9 @@ export type {
   IBrowserManager,
   PageContentResult,
   RecursiveFetchResult,
+  PooledBrowser,
+  BrowserPoolConfig,
+  IBrowserPool,
 } from "./browser.js";
 
 // ─── DATABASE & CHAT TYPES ────────────────────────────────────────────

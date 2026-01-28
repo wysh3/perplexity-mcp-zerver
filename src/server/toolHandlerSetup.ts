@@ -15,13 +15,19 @@ import {
 import { TOOL_SCHEMAS } from "../schema/toolSchemas.js";
 import type { ChatPerplexityArgs, ToolHandlersRegistry } from "../types/index.js";
 import { logError, logWarn } from "../utils/logging.js";
+import type { AuthenticationManager } from "./auth.js";
 
 /**
  * Sets up MCP tool handlers for the server
  * @param server - The MCP Server instance
  * @param toolHandlers - Registry of tool handler functions
+ * @param authManager - Authentication manager for API key validation (optional)
  */
-export function setupToolHandlers(server: Server, toolHandlers: ToolHandlersRegistry): void {
+export function setupToolHandlers(
+  server: Server,
+  toolHandlers: ToolHandlersRegistry,
+  authManager?: AuthenticationManager,
+): void {
   // Register ListTools handler
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
@@ -32,6 +38,18 @@ export function setupToolHandlers(server: Server, toolHandlers: ToolHandlersRegi
   // Register CallTool handler with comprehensive error handling and timeout management
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
+
+    // Check authentication if enabled
+    if (authManager && authManager.isEnabled()) {
+      const apiKey = (request as any).headers?.authorization?.replace("Bearer ", "");
+      if (!authManager.authenticate(apiKey)) {
+        logError(`Authentication failed for tool ${name}`);
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          "Unauthorized: Invalid or missing API key. Set MCP_AUTH_ENABLED=true and MCP_API_KEY=your-key to use authentication.",
+        );
+      }
+    }
 
     // Set a timeout for the entire MCP request
     const requestTimeout = setTimeout(() => {

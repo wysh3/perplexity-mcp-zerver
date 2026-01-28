@@ -31,10 +31,10 @@ export default defineConfig({
         "src/main.ts", // Entry point, not core logic
       ],
       thresholds: {
-        statements: 1.8,
-        branches: 1.8,
-        functions: 1.8,
-        lines: 1.8,
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
       },
     },
     testTimeout: 10000, // 10 seconds for integration tests

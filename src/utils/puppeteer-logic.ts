@@ -4,6 +4,13 @@
  */
 
 import type { ErrorAnalysis, RecoveryContext } from "../types/index.js";
+import { logWarn } from "./logging.js";
+
+const SECURITY_DISABLED = process.env["PERPLEXITY_SECURITY_DISABLED"] === "true";
+
+if (SECURITY_DISABLED) {
+  logWarn("⚠️ Security features disabled. SSRF and RCE risks present.");
+}
 
 /**
  * Determine recovery level based on error and context
@@ -118,23 +125,29 @@ export function calculateRetryDelay(
  * Generate comprehensive browser launch arguments optimized for Cloudflare bypass
  */
 export function generateBrowserArgs(userAgent: string): string[] {
-  return [
-    // Essential security flags
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-dev-shm-usage",
-    "--disable-web-security",
+  const flags: string[] = [];
 
-    // Enhanced anti-detection for Cloudflare
+  if (SECURITY_DISABLED) {
+    flags.push("--no-sandbox", "--disable-setuid-sandbox", "--disable-web-security");
+  } else {
+    flags.push(
+      "--disable-dev-shm-usage",
+      "--disable-sync",
+      "--metrics-recording-only",
+      "--safebrowsing-disable-auto-update",
+      "--disable-extensions",
+      "--disable-plugins-discovery",
+    );
+  }
+
+  flags.push(
     "--disable-blink-features=AutomationControlled",
     "--disable-features=IsolateOrigins,site-per-process",
     "--disable-infobars",
     "--disable-notifications",
     "--disable-popup-blocking",
     "--disable-default-apps",
-    "--disable-extensions",
     "--disable-translate",
-    "--disable-sync",
     "--disable-background-networking",
     "--disable-client-side-phishing-detection",
     "--disable-component-update",
@@ -153,24 +166,19 @@ export function generateBrowserArgs(userAgent: string): string[] {
     "--disable-smooth-scrolling",
     "--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees",
     "--enable-features=NetworkService,NetworkServiceInProcess",
-
-    // Performance and resource optimizations
     "--disable-accelerated-2d-canvas",
     "--disable-gpu",
     "--force-color-profile=srgb",
-    "--metrics-recording-only",
     "--mute-audio",
     "--no-first-run",
     "--no-default-browser-check",
     "--remote-debugging-port=0",
     "--use-mock-keychain",
-
-    // Window and viewport settings - optimized for low-end systems while maintaining realistic behavior
     "--window-size=1280,720",
-
-    // User agent
     `--user-agent=${userAgent}`,
-  ];
+  );
+
+  return flags;
 }
 
 /**

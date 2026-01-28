@@ -136,6 +136,30 @@ export interface IBrowserManager {
   getPuppeteerContext(): PuppeteerContext;
 }
 
+// ─── BROWSER POOL TYPES ────────────────────────────────────────────────
+export interface PooledBrowser {
+  id: string;
+  manager: IBrowserManager;
+  inUse: boolean;
+  lastUsed: number;
+}
+
+export interface BrowserPoolConfig {
+  poolSize: number;
+  maxRetries: number;
+  initializeTimeout: number;
+}
+
+export interface IBrowserPool {
+  initialize(): Promise<void>;
+  acquireBrowser(timeout?: number): Promise<IBrowserManager>;
+  releaseBrowser(manager: IBrowserManager): void;
+  getPoolStatus(): { total: number; inUse: number; available: number };
+  cleanup(): Promise<void>;
+  restartBrowser(id: string): Promise<void>;
+  healthCheck(): Promise<{ healthy: string[]; unhealthy: string[] }>;
+}
+
 // ─── CONTENT EXTRACTION TYPES ─────────────────────────────────────────
 export interface PageContentResult {
   url: string;

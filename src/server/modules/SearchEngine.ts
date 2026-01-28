@@ -34,37 +34,43 @@ export class SearchEngine implements ISearchEngine {
 
       // Use retry operation for the entire search process with increased retries
       const ctx = this.browserManager.getPuppeteerContext();
-      
-      return await retryOperation(ctx, async () => {
-        logInfo(`Navigating to Perplexity for query: "${query.substring(0, 30)}${query.length > 30 ? '...' : ''}"`);
-        await this.browserManager.navigateToPerplexity();
 
-        // Validate main frame is attached
-        const page = this.browserManager.getPage();
-        if (!page || page.mainFrame().isDetached()) {
-          logError("Main frame is detached, will retry with new browser instance");
-          throw new Error("Main frame is detached");
-        }
+      return await retryOperation(
+        ctx,
+        async () => {
+          logInfo(
+            `Navigating to Perplexity for query: "${query.substring(0, 30)}${query.length > 30 ? "..." : ""}"`,
+          );
+          await this.browserManager.navigateToPerplexity();
 
-        logInfo("Waiting for search input...");
-        const selector = await this.browserManager.waitForSearchInput();
-        if (!selector) {
-          logError("Search input not found, taking screenshot for debugging");
-          if (page) {
-            await page.screenshot({ path: "debug_search_input_not_found.png", fullPage: true });
+          // Validate main frame is attached
+          const page = this.browserManager.getPage();
+          if (!page || page.mainFrame().isDetached()) {
+            logError("Main frame is detached, will retry with new browser instance");
+            throw new Error("Main frame is detached");
           }
-          throw new Error("Search input not found");
-        }
 
-        logInfo(`Found search input with selector: ${selector}`);
+          logInfo("Waiting for search input...");
+          const selector = await this.browserManager.waitForSearchInput();
+          if (!selector) {
+            logError("Search input not found, taking screenshot for debugging");
+            if (page) {
+              await page.screenshot({ path: "debug_search_input_not_found.png", fullPage: true });
+            }
+            throw new Error("Search input not found");
+          }
 
-        // Perform the search
-        await this.executeSearch(page, selector, query);
+          logInfo(`Found search input with selector: ${selector}`);
 
-        // Wait for and extract the answer
-        const answer = await this.waitForCompleteAnswer(page);
-        return answer;
-      }, CONFIG.MAX_RETRIES);
+          // Perform the search
+          await this.executeSearch(page, selector, query);
+
+          // Wait for and extract the answer
+          const answer = await this.waitForCompleteAnswer(page);
+          return answer;
+        },
+        CONFIG.MAX_RETRIES,
+      );
     } catch (error) {
       logError("Search operation failed after all retries:", {
         error: error instanceof Error ? error.message : String(error),
@@ -92,7 +98,7 @@ export class SearchEngine implements ISearchEngine {
       }
 
       // For any other errors, return a user-friendly message
-      return `The search operation could not be completed. Error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again later with a more specific query.`;
+      return `The search operation could not be completed. Error: ${error instanceof Error ? error.message : "Unknown error"}. Please try again later with a more specific query.`;
     } finally {
       clearTimeout(operationTimeout);
     }
@@ -177,7 +183,7 @@ export class SearchEngine implements ISearchEngine {
     // Set a timeout to ensure we don't wait indefinitely, but make it much longer
     const timeoutPromise = new Promise<string>((_, reject) => {
       setTimeout(() => {
-        reject(new Error('Waiting for complete answer timed out'));
+        reject(new Error("Waiting for complete answer timed out"));
       }, CONFIG.ANSWER_WAIT_TIMEOUT); // Use the dedicated answer wait timeout
     });
 
@@ -206,18 +212,19 @@ export class SearchEngine implements ISearchEngine {
 
         // Extract all URLs from the answer
         const links = Array.from(document.querySelectorAll(".prose a[href]"));
-        const urls = links.map(link => (link as HTMLAnchorElement).href)
+        const urls = links
+          .map((link) => (link as HTMLAnchorElement).href)
           .filter(isSafeUrl)
-          .map(href => href.trim());
+          .map((href) => href.trim());
 
         // Combine text and URLs
         if (urls.length > 0) {
-          return `${answerText}\n\nURLs:\n${urls.map(url => `- ${url}`).join('\n')}`;
+          return `${answerText}\n\nURLs:\n${urls.map((url) => `- ${url}`).join("\n")}`;
         }
         return answerText;
       };
 
-      let lastAnswer = '';
+      let lastAnswer = "";
       let lastLength = 0;
       let stabilityCounter = 0;
       let noChangeCounter = 0;
@@ -239,13 +246,13 @@ export class SearchEngine implements ISearchEngine {
             noChangeCounter++;
 
             if (currentLength > 1000 && stabilityCounter >= 3) {
-              console.log('Long answer stabilized, exiting early');
+              logInfo("Long answer stabilized, exiting early");
               break;
             } else if (currentLength > 500 && stabilityCounter >= 4) {
-              console.log('Medium answer stabilized, exiting');
+              logInfo("Medium answer stabilized, exiting");
               break;
             } else if (stabilityCounter >= 5) {
-              console.log('Short answer stabilized, exiting');
+              logInfo("Short answer stabilized, exiting");
               break;
             }
           } else {
@@ -255,22 +262,23 @@ export class SearchEngine implements ISearchEngine {
           lastAnswer = currentAnswer;
 
           if (noChangeCounter >= 10 && currentLength > 200) {
-            console.log('Content stopped growing but has sufficient information');
+            logInfo("Content stopped growing but has sufficient information");
             break;
           }
         }
 
-        const lastProse = document.querySelector('.prose:last-child');
-        const isComplete = lastProse?.textContent?.includes('.') ||
-          lastProse?.textContent?.includes('?') ||
-          lastProse?.textContent?.includes('!');
+        const lastProse = document.querySelector(".prose:last-child");
+        const isComplete =
+          lastProse?.textContent?.includes(".") ||
+          lastProse?.textContent?.includes("?") ||
+          lastProse?.textContent?.includes("!");
 
         if (isComplete && stabilityCounter >= 2 && currentLength > 100) {
-          console.log('Completion indicators found, exiting');
+          logInfo("Completion indicators found, exiting");
           break;
         }
       }
-      return lastAnswer || 'No answer content found. The website may be experiencing issues.';
+      return lastAnswer || "No answer content found. The website may be experiencing issues.";
     });
 
     try {
@@ -286,31 +294,34 @@ export class SearchEngine implements ISearchEngine {
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             const partialAnswer = await page.evaluate(() => {
-              const elements = Array.from(document.querySelectorAll('.prose'));
-              return elements.map((el) => (el as HTMLElement).innerText.trim()).join('\n\n');
+              const elements = Array.from(document.querySelectorAll(".prose"));
+              return elements.map((el) => (el as HTMLElement).innerText.trim()).join("\n\n");
             });
 
             if (partialAnswer && partialAnswer.length > 50) {
-              return partialAnswer + '\n\n[Note: Answer retrieval was interrupted. This is a partial response.]';
+              return (
+                partialAnswer +
+                "\n\n[Note: Answer retrieval was interrupted. This is a partial response.]"
+              );
             }
 
             // Wait briefly before trying again
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           } catch (evalError) {
             logError(`Attempt ${attempt + 1} to get partial answer failed:`, {
               error: evalError instanceof Error ? evalError.message : String(evalError),
             });
             // Wait before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         }
 
-        return 'Answer retrieval timed out. The service might be experiencing high load. Please try again with a more specific query.';
+        return "Answer retrieval timed out. The service might be experiencing high load. Please try again with a more specific query.";
       } catch (e) {
         logError("Failed to retrieve partial answer:", {
           error: e instanceof Error ? e.message : String(e),
         });
-        return 'Answer retrieval timed out. Please try again later.';
+        return "Answer retrieval timed out. Please try again later.";
       }
     }
   }
@@ -322,17 +333,24 @@ export class SearchEngine implements ISearchEngine {
         // Try various ways to find content
         const contentSelectors = [
           // Common content containers
-          'main', 'article', '.content', '.answer', '.result',
+          "main",
+          "article",
+          ".content",
+          ".answer",
+          ".result",
           // Text containers
-          'p', 'div > p', '.text', '[class*="text"]',
+          "p",
+          "div > p",
+          ".text",
+          '[class*="text"]',
           // Any large text block
-          'div:not(:empty)'
+          "div:not(:empty)",
         ];
 
         for (const selector of contentSelectors) {
           const elements = Array.from(document.querySelectorAll(selector));
           // Filter to elements with substantial text
-          const textElements = elements.filter(el => {
+          const textElements = elements.filter((el) => {
             const text = (el as HTMLElement).innerText.trim();
             return text.length > 100; // Only consider elements with substantial text
           });
@@ -345,18 +363,21 @@ export class SearchEngine implements ISearchEngine {
 
             // Get the top 3 elements with the most text
             const topElements = textElements.slice(0, 3);
-            return topElements.map(el => (el as HTMLElement).innerText.trim()).join('\n\n');
+            return topElements.map((el) => (el as HTMLElement).innerText.trim()).join("\n\n");
           }
         }
 
         // Last resort: get any visible text
-        return document.body.innerText.substring(0, 2000) + '\n\n[Note: Content extraction used fallback method due to page structure changes]';
+        return (
+          document.body.innerText.substring(0, 2000) +
+          "\n\n[Note: Content extraction used fallback method due to page structure changes]"
+        );
       });
     } catch (error) {
       logError("Error in fallback answer extraction:", {
         error: error instanceof Error ? error.message : String(error),
       });
-      return 'Unable to extract answer content. The website structure may have changed.';
+      return "Unable to extract answer content. The website structure may have changed.";
     }
   }
 

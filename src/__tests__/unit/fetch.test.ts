@@ -28,18 +28,33 @@ vi.mock("../../utils/logging.js", () => ({
 const mockReadabilityParse = vi.fn();
 vi.mock("@mozilla/readability", () => {
   return {
-    Readability: vi.fn().mockImplementation(() => ({
-      parse: mockReadabilityParse,
-    })),
+    Readability: class {
+      parse = mockReadabilityParse;
+    },
   };
 });
 
-const mockJSDOM = vi.fn();
-vi.mock("jsdom", () => {
-  return {
-    JSDOM: mockJSDOM,
+// Create a configurable JSDOM mock
+let mockJSDOMDocument: any = {
+  title: "",
+  body: {
+    textContent: "",
+  },
+};
+
+class MockJSDOM {
+  window: any = {
+    document: mockJSDOMDocument,
   };
-});
+
+  constructor(html: string) {
+    this.window.document = mockJSDOMDocument;
+  }
+}
+
+vi.mock("jsdom", () => ({
+  JSDOM: MockJSDOM,
+}));
 
 describe("Fetch Utilities", () => {
   // Create a mock PuppeteerContext
@@ -64,6 +79,12 @@ describe("Fetch Utilities", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockJSDOMDocument = {
+      title: "",
+      body: {
+        textContent: "",
+      },
+    };
   });
 
   describe("Successful Content Fetching", () => {
@@ -81,18 +102,13 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: "Test Page",
         body: {
           textContent:
             "This is test content with enough characters to pass validation requirements for meaningful content extraction.",
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       // Mock Readability to return parsed content
       mockReadabilityParse.mockReturnValue({
@@ -133,18 +149,13 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: null,
         body: {
           textContent:
             "This is plain text content with enough characters to pass the minimum length requirement for meaningful content.",
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       const result = await fetchSimpleContent("https://example.com/text", createMockContext());
 
@@ -169,17 +180,12 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: "Article Title",
         body: {
           textContent: "Short content",
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       // Mock Readability to return better content
       mockReadabilityParse.mockReturnValue({
@@ -233,18 +239,13 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: null,
         body: {
           textContent:
             "This is HTML content with sufficient length to pass validation requirements.",
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       mockReadabilityParse.mockReturnValue(null);
 
@@ -270,18 +271,13 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: null,
         body: {
           textContent:
             "Plain text content with sufficient length to pass validation requirements for meaningful content.",
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       const result = await fetchSimpleContent("https://example.com/text", createMockContext());
 
@@ -310,17 +306,12 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: null,
         body: {
           textContent: longContent,
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       mockReadabilityParse.mockReturnValue(null);
 
@@ -345,17 +336,12 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: null,
         body: {
           textContent: "Hi",
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       mockReadabilityParse.mockReturnValue(null);
 
@@ -475,17 +461,12 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: "Fallback Test",
         body: {
           textContent: "This content has sufficient length to pass validation requirements.",
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       // Mock Readability to throw an error
       mockReadabilityParse.mockImplementation(() => {
@@ -521,17 +502,12 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: null,
         body: {
           textContent: "",
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       mockReadabilityParse.mockReturnValue(null);
 
@@ -556,17 +532,12 @@ describe("Fetch Utilities", () => {
       mockAxiosGet.mockResolvedValue(mockResponse);
 
       // Mock JSDOM (it should handle malformed HTML gracefully)
-      const mockDocument = {
+      mockJSDOMDocument = {
         title: null,
         body: {
           textContent: "This content has sufficient length to pass validation requirements.",
         },
       };
-      mockJSDOM.mockImplementation(() => ({
-        window: {
-          document: mockDocument,
-        },
-      }));
 
       mockReadabilityParse.mockReturnValue(null);
 

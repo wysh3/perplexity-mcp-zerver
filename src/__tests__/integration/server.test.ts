@@ -5,11 +5,11 @@ import type { IBrowserManager, IDatabaseManager, ISearchEngine } from "../../typ
 // Mock the modules to avoid actual browser initialization and database connections
 vi.mock("../../server/modules/BrowserManager.js", () => {
   return {
-    BrowserManager: vi.fn().mockImplementation(() => ({
-      initialize: vi.fn().mockResolvedValue(undefined),
-      isReady: vi.fn().mockReturnValue(true),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-      getPuppeteerContext: vi.fn().mockReturnValue({
+    BrowserManager: class {
+      initialize = vi.fn().mockResolvedValue(undefined);
+      isReady = vi.fn().mockReturnValue(true);
+      cleanup = vi.fn().mockResolvedValue(undefined);
+      getPuppeteerContext = vi.fn().mockReturnValue({
         browser: null,
         page: null,
         isInitializing: false,
@@ -26,28 +26,28 @@ vi.mock("../../server/modules/BrowserManager.js", () => {
         incrementOperationCount: vi.fn(),
         determineRecoveryLevel: vi.fn(),
         IDLE_TIMEOUT_MS: 300000,
-      }),
-    })),
+      });
+    },
   };
 });
 
 vi.mock("../../server/modules/DatabaseManager.js", () => {
   return {
-    DatabaseManager: vi.fn().mockImplementation(() => ({
-      initialize: vi.fn(),
-      close: vi.fn(),
-      getChatHistory: vi.fn().mockReturnValue([]),
-      saveChatMessage: vi.fn(),
-      isInitialized: vi.fn().mockReturnValue(true),
-    })),
+    DatabaseManager: class {
+      initialize = vi.fn();
+      close = vi.fn();
+      getChatHistory = vi.fn().mockReturnValue([]);
+      saveChatMessage = vi.fn();
+      isInitialized = vi.fn().mockReturnValue(true);
+    },
   };
 });
 
 vi.mock("../../server/modules/SearchEngine.js", () => {
   return {
-    SearchEngine: vi.fn().mockImplementation(() => ({
-      performSearch: vi.fn().mockResolvedValue("Mock search result"),
-    })),
+    SearchEngine: class {
+      performSearch = vi.fn().mockResolvedValue("Mock search result");
+    },
   };
 });
 

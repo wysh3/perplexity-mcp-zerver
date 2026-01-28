@@ -212,9 +212,13 @@ describe("Puppeteer Logic Utilities", () => {
 
       const args = generateBrowserArgs("test-agent");
 
-      expect(args).toContain("--no-sandbox");
-      expect(args).toContain("--disable-setuid-sandbox");
+      // These flags are always present regardless of security settings
       expect(args).toContain("--disable-dev-shm-usage");
+      expect(args).toContain("--disable-sync");
+      expect(args).toContain("--user-agent=test-agent");
+
+      // Security-related flags are only present when SECURITY_DISABLED is true
+      // They are removed by default for security reasons
     });
   });
 

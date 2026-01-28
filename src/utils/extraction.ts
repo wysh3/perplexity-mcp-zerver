@@ -8,7 +8,9 @@ import type { Page } from "puppeteer";
 import { CONFIG } from "../server/config.js";
 import type { PageContentResult, PuppeteerContext } from "../types/index.js";
 import { fetchSimpleContent } from "./fetch.js";
+import { logError } from "./logging.js";
 import { initializeBrowser } from "./puppeteer.js";
+import { urlSecurity } from "./url-security.js";
 
 // Helper functions for content extraction
 function detectAndRewriteGitHubUrl(
@@ -198,7 +200,6 @@ async function extractFallbackContent(
     for (const selector of selectors) {
       const element = document.querySelector(selector) as HTMLElement | null;
       if (element?.innerText && element.innerText.trim().length > 100) {
-        console.error(`Fallback using selector: ${selector}`);
         return { text: element.innerText.trim(), selector: selector };
       }
     }
@@ -215,7 +216,6 @@ async function extractFallbackContent(
 
     const bodyText = bodyClone.innerText.trim();
     if (bodyText.length > 200) {
-      console.error("Fallback using filtered body text.");
       return { text: bodyText, selector: "body (filtered)" };
     }
 
@@ -270,6 +270,16 @@ export async function fetchSinglePageContent(
   url: string,
   ctx: PuppeteerContext,
 ): Promise<PageContentResult> {
+  // Validate URL before fetching
+  const validation = urlSecurity.validateURL(url);
+  if (!validation.valid) {
+    logError(`URL security validation failed: ${validation.reason}`);
+    return {
+      url,
+      error: `URL blocked: ${validation.reason}`,
+    };
+  }
+
   const originalUrl = url;
 
   // GitHub URL detection and rewriting
@@ -431,6 +441,20 @@ export async function recursiveFetch(
   if (currentDepth > maxDepth || visitedUrls.has(startUrl) || globalTimeoutSignal.timedOut) {
     return;
   }
+
+  // Validate URL before fetching
+  const validation = urlSecurity.validateURL(startUrl);
+  if (!validation.valid) {
+    logError(`URL security validation failed for ${startUrl}: ${validation.reason}`);
+    results.push({
+      url: startUrl,
+      title: null,
+      textContent: null,
+      error: `URL blocked: ${validation.reason}`,
+    });
+    return;
+  }
+
   ctx.log("info", `[Depth ${currentDepth}] Fetching: ${startUrl}`);
   visitedUrls.add(startUrl);
   const pageResult: PageContentResult = {
