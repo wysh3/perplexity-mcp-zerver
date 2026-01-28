@@ -34,7 +34,7 @@
     "axios": "^1.13.4",
     "jsdom": "26.1.0",
     "minimist": "1.2.8",
-    "puppeteer": "24.10.1",
+    "puppeteer": "24.36.1",
     "zod": "3.25.67"
   },
   "devDependencies": {
